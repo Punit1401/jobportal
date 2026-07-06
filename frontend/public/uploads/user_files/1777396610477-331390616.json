@@ -1,0 +1,192 @@
+{
+    "name": "Daily 5 Min Cartoon Video (FREE AI)",
+    "nodes": [
+      {
+        "id": "cron1",
+        "name": "Daily Trigger",
+        "type": "n8n-nodes-base.cron",
+        "position": [200, 300],
+        "parameters": {
+          "schedule": {
+            "hourly": [
+              {
+                "minute": 0,
+                "hour": 10
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "hf_story",
+        "name": "Generate Cartoon Story",
+        "type": "n8n-nodes-base.httpRequest",
+        "position": [420, 300],
+        "parameters": {
+          "url": "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
+          "method": "POST",
+          "responseFormat": "json",
+          "jsonParameters": true,
+          "options": {},
+          "bodyParametersJson": "{ \"inputs\": \"Write a 5 minute kids cartoon story with Bunny and Fox. Include simple dialogues and moral.\" }",
+          "headerParametersJson": "{ \"Authorization\": \"Bearer YOUR_HUGGINGFACE_API_KEY\" }"
+        }
+      },
+      {
+        "id": "split_scenes",
+        "name": "Split Scenes",
+        "type": "n8n-nodes-base.function",
+        "position": [650, 300],
+        "parameters": {
+          "functionCode": "const text = items[0].json[0].generated_text || items[0].json.generated_text;\nconst parts = text.split(/Scene|scene/).filter(p => p.length > 50);\nreturn parts.map((p, i) => ({ json: { scene: i + 1, text: p } }));"
+        }
+      },
+      {
+        "id": "pexels_image",
+        "name": "Get Cartoon Image",
+        "type": "n8n-nodes-base.httpRequest",
+        "position": [880, 300],
+        "parameters": {
+          "url": "=https://api.pexels.com/v1/search?query=cartoon+animal&per_page=1",
+          "method": "GET",
+          "responseFormat": "json",
+          "headerParametersJson": "{ \"Authorization\": \"z3h0XyXGKIhwql7HBN3SmEMuONKCGYND51HaJwlF7Wao0qtJozraQNYt\" }"
+        }
+      },
+      {
+        "id": "google_tts",
+        "name": "Generate Voice",
+        "type": "n8n-nodes-base.httpRequest",
+        "position": [1110, 300],
+        "parameters": {
+          "url": "https://texttospeech.googleapis.com/v1/text:synthesize?key=YOUR_GOOGLE_TTS_KEY",
+          "method": "POST",
+          "responseFormat": "json",
+          "jsonParameters": true,
+          "bodyParametersJson": "{ \"input\": { \"text\": \"{{$json[\"text\"]}}\" }, \"voice\": { \"languageCode\": \"en-US\", \"name\": \"en-US-Standard-C\" }, \"audioConfig\": { \"audioEncoding\": \"MP3\" } }"
+        }
+      },
+      {
+        "id": "ffmpeg",
+        "name": "Create Video",
+        "type": "n8n-nodes-base.executeCommand",
+        "position": [1340, 300],
+        "parameters": {
+          "command": "ffmpeg -loop 1 -i image.jpg -i voice.mp3 -c:v libx264 -c:a aac -shortest cartoon.mp4"
+        }
+      },
+      {
+        "id": "hf_title",
+        "name": "Generate Title",
+        "type": "n8n-nodes-base.httpRequest",
+        "position": [1560, 300],
+        "parameters": {
+          "url": "https://api-inference.huggingface.co/models/google/flan-t5-large",
+          "method": "POST",
+          "responseFormat": "json",
+          "jsonParameters": true,
+          "bodyParametersJson": "{ \"inputs\": \"Create a YouTube title and description for kids cartoon story\" }",
+          "headerParametersJson": "{ \"Authorization\": \"Bearer YOUR_HUGGINGFACE_API_KEY\" }"
+        }
+      },
+      {
+        "id": "youtube_upload",
+        "name": "Upload YouTube",
+        "type": "n8n-nodes-base.youtube",
+        "position": [1780, 300],
+        "parameters": {
+          "operation": "upload",
+          "videoFile": "cartoon.mp4",
+          "title": "={{$json[0].generated_text}}",
+          "description": "Kids cartoon moral story",
+          "privacyStatus": "public"
+        },
+        "credentials": {
+          "youtubeOAuth2Api": {
+            "id": "YOUR_CREDENTIAL_ID",
+            "name": "YouTube OAuth"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Daily Trigger": {
+        "main": [
+          [
+            {
+              "node": "Generate Cartoon Story",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Generate Cartoon Story": {
+        "main": [
+          [
+            {
+              "node": "Split Scenes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Split Scenes": {
+        "main": [
+          [
+            {
+              "node": "Get Cartoon Image",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Cartoon Image": {
+        "main": [
+          [
+            {
+              "node": "Generate Voice",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Generate Voice": {
+        "main": [
+          [
+            {
+              "node": "Create Video",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "CreateCreate Video": {
+        "main": [
+          [
+            {
+              "node": "Generate Title",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Generate Title": {
+        "main": [
+          [
+            {
+              "node": "Upload YouTube",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    }
+  }
+  

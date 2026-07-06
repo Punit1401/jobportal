@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Study Planner</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Nunito', sans-serif; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; margin: 0; }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes progressFill {
+      from { width: 0%; }
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+      50% { box-shadow: 0 0 0 12px rgba(99, 102, 241, 0); }
+    }
+    @keyframes fabBounce {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+    @keyframes confettiBurst {
+      0% { opacity: 1; transform: scale(0) rotate(0deg); }
+      50% { opacity: 1; transform: scale(1.2) rotate(180deg); }
+      100% { opacity: 0; transform: scale(0.8) rotate(360deg); }
+    }
+    @keyframes countUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    @keyframes bellRing {
+      0%, 100% { transform: rotate(0deg); }
+      15% { transform: rotate(14deg); }
+      30% { transform: rotate(-12deg); }
+      45% { transform: rotate(8deg); }
+      60% { transform: rotate(-6deg); }
+      75% { transform: rotate(2deg); }
+    }
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-60px) scale(1.5); }
+    }
+
+    .animate-slide-up { animation: slideUp 0.5s ease-out forwards; }
+    .animate-scale-in { animation: scaleIn 0.4s ease-out forwards; }
+    .gradient-header {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6, #06b6d4, #6366f1);
+      background-size: 300% 300%;
+      animation: gradientShift 6s ease infinite;
+    }
+    .progress-bar-fill { animation: progressFill 1.5s ease-out forwards; }
+    .fab-btn { animation: pulseGlow 2s ease-in-out infinite; }
+    .fab-btn:active { animation: fabBounce 0.3s ease; }
+    .task-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .task-card:active { transform: scale(0.97); }
+    .task-completed { opacity: 0.6; }
+    .task-completed .task-title { text-decoration: line-through; }
+    .bell-ring { animation: bellRing 0.8s ease; }
+    .stat-number { animation: countUp 0.6s ease-out forwards; }
+    .nav-item { transition: all 0.2s ease; }
+    .nav-item.active { color: #6366f1; transform: translateY(-2px); }
+    .nav-item:active { transform: scale(0.9); }
+
+    .confetti-particle {
+      position: absolute;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      animation: confettiBurst 0.7s ease-out forwards;
+      pointer-events: none;
+    }
+    .float-emoji {
+      position: absolute;
+      animation: floatUp 1s ease-out forwards;
+      pointer-events: none;
+      font-size: 20px;
+    }
+
+    .shimmer-bg {
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+      background-size: 200% 100%;
+      animation: shimmer 2s ease-in-out infinite;
+    }
+
+    ::-webkit-scrollbar { width: 0; height: 0; }
+
+    .exam-card { transition: all 0.3s ease; }
+    .exam-card:active { transform: scale(0.97); }
+
+    .checkbox-wrapper {
+      width: 26px; height: 26px;
+      border-radius: 8px;
+      border: 2.5px solid #d1d5db;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      flex-shrink: 0;
+    }
+    .checkbox-wrapper.checked {
+      border-color: #10b981;
+      background: #10b981;
+    }
+    .checkbox-wrapper.checked svg { opacity: 1; transform: scale(1); }
+    .checkbox-wrapper svg { opacity: 0; transform: scale(0); transition: all 0.3s ease; }
+
+    .add-modal-overlay {
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(4px);
+      transition: opacity 0.3s ease;
+    }
+    .add-modal-content {
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full bg-white">
+  <div id="app-wrapper" class="w-full h-full flex flex-col relative" style="max-width: 420px; margin: 0 auto; background: #ffffff;"><!-- Scrollable Content -->
+   <div id="scroll-content" class="flex-1 overflow-auto pb-24"><!-- Header -->
+    <header class="gradient-header px-5 pt-10 pb-8 relative overflow-hidden" style="border-radius: 0 0 28px 28px;">
+     <div class="shimmer-bg absolute inset-0" style="border-radius: 0 0 28px 28px;"></div>
+     <div class="relative flex items-center justify-between">
+      <div class="animate-slide-up">
+       <p class="text-white/80 text-sm font-semibold" id="greeting-time">Good Morning,</p>
+       <h1 class="text-white text-2xl font-900 mt-0.5" id="greeting-name">Alex! 👋</h1>
+       <p class="text-white/70 text-xs mt-1 font-600">Ready to crush your goals today?</p>
+      </div>
+      <div class="flex items-center gap-3 animate-scale-in"><button id="bell-btn" class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center relative" aria-label="Notifications"> <i data-lucide="bell" class="w-5 h-5 text-white"></i> <span class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-400 rounded-full text-white text-[9px] font-bold flex items-center justify-center">3</span> </button>
+       <div class="w-11 h-11 rounded-full bg-gradient-to-br from-yellow-300 to-orange-400 flex items-center justify-center text-lg font-800 text-white shadow-lg" style="border: 2.5px solid rgba(255,255,255,0.6);">
+        A
+       </div>
+      </div>
+     </div>
+    </header><!-- Daily Study Goal -->
+    <section class="px-5 -mt-5 relative z-10">
+     <div class="bg-white rounded-3xl p-5 animate-slide-up" style="box-shadow: 0 8px 32px rgba(99, 102, 241, 0.12); animation-delay: 0.1s;">
+      <div class="flex items-center justify-between mb-3">
+       <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center"><i data-lucide="target" class="w-5 h-5 text-indigo-500"></i>
+        </div><span class="font-700 text-gray-800 text-sm">Daily Study Goal</span>
+       </div><span class="text-xs font-700 text-indigo-500 bg-indigo-50 px-2.5 py-1 rounded-full">40%</span>
+      </div>
+      <p class="text-2xl font-900 text-gray-900" id="study-goal-text">2h <span class="text-gray-400 font-600">/ 5h</span></p>
+      <div class="w-full h-3 bg-gray-100 rounded-full mt-3 overflow-hidden">
+       <div class="h-full rounded-full progress-bar-fill" style="width: 40%; background: linear-gradient(90deg, #6366f1, #8b5cf6);"></div>
+      </div>
+      <p class="text-xs font-600 mt-2.5 text-purple-500" id="motivational-text">🔥 Keep going! You're doing great!</p>
+     </div>
+    </section><!-- Today's Tasks -->
+    <section class="px-5 mt-6">
+     <div class="flex items-center justify-between mb-3 animate-slide-up" style="animation-delay: 0.2s;">
+      <h2 class="font-800 text-gray-900 text-base" id="tasks-section-title">Today's Study Tasks</h2><span class="text-xs font-600 text-gray-400" id="tasks-count-label">4 tasks</span>
+     </div>
+     <div id="tasks-container" class="space-y-3"><!-- Tasks rendered by JS -->
+     </div>
+    </section><!-- Upcoming Exams -->
+    <section class="px-5 mt-7">
+     <div class="flex items-center justify-between mb-3 animate-slide-up" style="animation-delay: 0.4s;">
+      <h2 class="font-800 text-gray-900 text-base" id="exams-section-title">Upcoming Exams</h2><button class="text-xs font-700 text-indigo-500">See All</button>
+     </div>
+     <div id="exams-container" class="flex gap-3 overflow-x-auto pb-2" style="-webkit-overflow-scrolling: touch;"><!-- Exams rendered by JS -->
+     </div>
+    </section><!-- Study Statistics -->
+    <section class="px-5 mt-7 mb-4">
+     <h2 class="font-800 text-gray-900 text-base mb-3 animate-slide-up" style="animation-delay: 0.5s;">Study Statistics</h2>
+     <div class="grid grid-cols-3 gap-3" id="stats-container"><!-- Stats rendered by JS -->
+     </div>
+    </section>
+   </div><!-- FAB --> <button id="fab-btn" class="fab-btn absolute z-30 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); bottom: 80px; right: 20px;" aria-label="Add new task"> <i data-lucide="plus" class="w-7 h-7 text-white"></i> </button> <!-- Bottom Navigation -->
+   <nav class="absolute bottom-0 left-0 right-0 bg-white px-2 pt-2 pb-3 flex justify-around items-center z-20" style="box-shadow: 0 -4px 20px rgba(0,0,0,0.06); border-radius: 20px 20px 0 0;"><button class="nav-item active flex flex-col items-center gap-0.5 px-3 py-1" data-nav="home" aria-label="Home"> <i data-lucide="home" class="w-5 h-5"></i> <span class="text-[10px] font-700">Home</span> </button> <button class="nav-item flex flex-col items-center gap-0.5 px-3 py-1 text-gray-400" data-nav="calendar" aria-label="Calendar"> <i data-lucide="calendar" class="w-5 h-5"></i> <span class="text-[10px] font-700">Calendar</span> </button> <button class="nav-item flex flex-col items-center gap-0.5 px-3 py-1 text-gray-400" data-nav="timer" aria-label="Timer"> <i data-lucide="timer" class="w-5 h-5"></i> <span class="text-[10px] font-700">Timer</span> </button> <button class="nav-item flex flex-col items-center gap-0.5 px-3 py-1 text-gray-400" data-nav="progress" aria-label="Progress"> <i data-lucide="bar-chart-3" class="w-5 h-5"></i> <span class="text-[10px] font-700">Progress</span> </button> <button class="nav-item flex flex-col items-center gap-0.5 px-3 py-1 text-gray-400" data-nav="profile" aria-label="Profile"> <i data-lucide="user" class="w-5 h-5"></i> <span class="text-[10px] font-700">Profile</span> </button>
+   </nav><!-- Add Task Modal -->
+   <div id="add-modal" class="absolute inset-0 z-40 add-modal-overlay flex items-end justify-center" style="display: none;">
+    <div class="add-modal-content bg-white w-full rounded-t-3xl p-6 pb-8" style="max-width: 420px;">
+     <div class="flex items-center justify-between mb-5">
+      <h3 class="font-800 text-gray-900 text-lg">Add Study Task</h3><button id="close-modal" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center" aria-label="Close"> <i data-lucide="x" class="w-4 h-4 text-gray-500"></i> </button>
+     </div>
+     <form id="add-task-form" class="space-y-4">
+      <div><label for="new-subject" class="text-xs font-700 text-gray-500 mb-1 block">Subject</label> <input id="new-subject" type="text" placeholder="e.g. Mathematics" class="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100 text-sm font-600 text-gray-800 focus:border-indigo-400 focus:outline-none transition-colors">
+      </div>
+      <div><label for="new-topic" class="text-xs font-700 text-gray-500 mb-1 block">Topic / Task</label> <input id="new-topic" type="text" placeholder="e.g. Chapter 5 Review" class="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100 text-sm font-600 text-gray-800 focus:border-indigo-400 focus:outline-none transition-colors">
+      </div>
+      <div><label for="new-time" class="text-xs font-700 text-gray-500 mb-1 block">Study Time</label> <input id="new-time" type="text" placeholder="e.g. 45 min" class="w-full px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100 text-sm font-600 text-gray-800 focus:border-indigo-400 focus:outline-none transition-colors">
+      </div><button type="submit" class="w-full py-3.5 rounded-xl text-white font-700 text-sm" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">Add Task ✨</button>
+     </form>
+    </div>
+   </div>
+  </div>
+  <script>
+    // State
+    let tasks = [
+      { id: 1, subject: 'Mathematics', topic: 'Linear Algebra - Ch.4', time: '45 min', color: '#6366f1', icon: 'calculator', completed: false },
+      { id: 2, subject: 'Physics', topic: 'Quantum Mechanics Intro', time: '1 hr', color: '#f59e0b', icon: 'atom', completed: false },
+      { id: 3, subject: 'Computer Science', topic: 'Data Structures Review', time: '30 min', color: '#10b981', icon: 'code-2', completed: true },
+      { id: 4, subject: 'English Literature', topic: 'Essay Draft - Shakespeare', time: '1 hr', color: '#ef4444', icon: 'book-open', completed: false }
+    ];
+
+    const exams = [
+      { subject: 'Mathematics', date: 'Dec 20', daysLeft: 5, urgency: 'red' },
+      { subject: 'Physics', date: 'Dec 24', daysLeft: 9, urgency: 'orange' },
+      { subject: 'Computer Science', date: 'Jan 5', daysLeft: 21, urgency: 'green' }
+    ];
+
+    const stats = [
+      { label: 'Hours Today', value: '2.5', icon: 'clock', color: '#6366f1', bg: '#eef2ff' },
+      { label: 'Completed', value: '3', icon: 'check-circle', color: '#10b981', bg: '#ecfdf5' },
+      { label: 'Day Streak', value: '12', icon: 'flame', color: '#f59e0b', bg: '#fefce8' }
+    ];
+
+    const urgencyColors = { red: '#ef4444', orange: '#f97316', green: '#10b981' };
+    const urgencyBg = { red: '#fef2f2', orange: '#fff7ed', green: '#ecfdf5' };
+
+    let nextId = 5;
+
+    // Default config
+    const defaultConfig = {
+      greeting_name: 'Alex',
+      motivational_text: '🔥 Keep going! You\'re doing great!',
+      tasks_title: "Today's Study Tasks",
+      exams_title: 'Upcoming Exams',
+      background_color: '#ffffff',
+      header_gradient_start: '#6366f1',
+      text_color: '#111827',
+      primary_action_color: '#6366f1',
+      secondary_action_color: '#8b5cf6',
+      font_family: 'Nunito',
+      font_size: 14
+    };
+
+    // Render functions
+    function renderTasks() {
+      const container = document.getElementById('tasks-container');
+      const completedCount = tasks.filter(t => t.completed).length;
+      document.getElementById('tasks-count-label').textContent = `${tasks.length} tasks`;
+
+      const existingCards = new Map([...container.children].map(el => [el.dataset.taskId, el]));
+      const taskIds = new Set(tasks.map(t => String(t.id)));
+
+      tasks.forEach((task, i) => {
+        const tid = String(task.id);
+        if (existingCards.has(tid)) {
+          updateTaskCard(existingCards.get(tid), task);
+          existingCards.delete(tid);
+        } else {
+          const card = createTaskCard(task, i);
+          container.appendChild(card);
+        }
+      });
+
+      existingCards.forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(-20px)';
+        setTimeout(() => el.remove(), 300);
+      });
+    }
+
+    function createTaskCard(task, index) {
+      const card = document.createElement('div');
+      card.dataset.taskId = String(task.id);
+      card.className = `task-card bg-white rounded-2xl p-4 flex items-center gap-3 animate-slide-up ${task.completed ? 'task-completed' : ''}`;
+      card.style.cssText = `box-shadow: 0 4px 16px rgba(0,0,0,0.06); animation-delay: ${0.2 + index * 0.08}s; position: relative; overflow: hidden;`;
+      card.innerHTML = buildTaskInner(task);
+      attachTaskEvents(card, task);
+      return card;
+    }
+
+    function updateTaskCard(card, task) {
+      const wasCompleted = card.classList.contains('task-completed');
+      if (task.completed && !wasCompleted) {
+        card.classList.add('task-completed');
+      } else if (!task.completed && wasCompleted) {
+        card.classList.remove('task-completed');
+      }
+      card.innerHTML = buildTaskInner(task);
+      attachTaskEvents(card, task);
+    }
+
+    function buildTaskInner(task) {
+      return `
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style="background: ${task.color}15;">
+          <i data-lucide="${task.icon}" class="w-5 h-5" style="color: ${task.color};"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="task-title font-700 text-gray-800 text-sm truncate">${task.subject}</p>
+          <p class="text-xs text-gray-400 font-600 truncate">${task.topic}</p>
+        </div>
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <span class="text-xs font-700 text-gray-400 bg-gray-50 px-2 py-1 rounded-lg">${task.time}</span>
+          <div class="checkbox-wrapper ${task.completed ? 'checked' : ''}" data-check-id="${task.id}">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+      `;
+    }
+
+    function attachTaskEvents(card, task) {
+      const checkbox = card.querySelector(`[data-check-id="${task.id}"]`);
+      if (checkbox) {
+        checkbox.addEventListener('click', () => toggleTask(task.id, card));
+      }
+    }
+
+    function toggleTask(id, cardEl) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+      task.completed = !task.completed;
+
+      if (task.completed) {
+        spawnConfetti(cardEl);
+        spawnFloatEmoji(cardEl);
+      }
+      renderTasks();
+      lucide.createIcons();
+      updateStats();
+    }
+
+    function spawnConfetti(el) {
+      const rect = el.getBoundingClientRect();
+      const wrapper = document.getElementById('app-wrapper');
+      const wrapperRect = wrapper.getBoundingClientRect();
+      const colors = ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
+      for (let i = 0; i < 12; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'confetti-particle';
+        particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+        particle.style.left = (rect.right - wrapperRect.left - 30 + (Math.random() - 0.5) * 40) + 'px';
+        particle.style.top = (rect.top - wrapperRect.top + rect.height / 2 + (Math.random() - 0.5) * 30) + 'px';
+        particle.style.animationDelay = (Math.random() * 0.2) + 's';
+        wrapper.appendChild(particle);
+        setTimeout(() => particle.remove(), 900);
+      }
+    }
+
+    function spawnFloatEmoji(el) {
+      const rect = el.getBoundingClientRect();
+      const wrapper = document.getElementById('app-wrapper');
+      const wrapperRect = wrapper.getBoundingClientRect();
+      const emojis = ['⭐', '🎉', '✨', '💪'];
+      const emoji = document.createElement('div');
+      emoji.className = 'float-emoji';
+      emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      emoji.style.left = (rect.right - wrapperRect.left - 40) + 'px';
+      emoji.style.top = (rect.top - wrapperRect.top) + 'px';
+      wrapper.appendChild(emoji);
+      setTimeout(() => emoji.remove(), 1100);
+    }
+
+    function renderExams() {
+      const container = document.getElementById('exams-container');
+      container.innerHTML = exams.map((exam, i) => `
+        <div class="exam-card flex-shrink-0 rounded-2xl p-4 animate-scale-in" style="width: 160px; background: ${urgencyBg[exam.urgency]}; animation-delay: ${0.4 + i * 0.1}s;">
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center mb-2" style="background: ${urgencyColors[exam.urgency]}20;">
+            <i data-lucide="graduation-cap" class="w-4 h-4" style="color: ${urgencyColors[exam.urgency]};"></i>
+          </div>
+          <p class="font-700 text-gray-800 text-sm">${exam.subject}</p>
+          <p class="text-xs text-gray-400 font-600 mt-0.5">${exam.date}</p>
+          <div class="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-700 text-white" style="background: ${urgencyColors[exam.urgency]};">
+            <i data-lucide="clock" class="w-3 h-3"></i>
+            ${exam.daysLeft} days left
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderStats() {
+      const container = document.getElementById('stats-container');
+      const completedCount = tasks.filter(t => t.completed).length;
+      const currentStats = [
+        { ...stats[0] },
+        { ...stats[1], value: String(completedCount) },
+        { ...stats[2] }
+      ];
+      container.innerHTML = currentStats.map((stat, i) => `
+        <div class="rounded-2xl p-3.5 text-center animate-scale-in" style="background: ${stat.bg}; animation-delay: ${0.5 + i * 0.1}s;">
+          <div class="w-9 h-9 rounded-xl mx-auto flex items-center justify-center mb-2" style="background: ${stat.color}20;">
+            <i data-lucide="${stat.icon}" class="w-4 h-4" style="color: ${stat.color};"></i>
+          </div>
+          <p class="text-xl font-900 stat-number" style="color: ${stat.color};">${stat.value}</p>
+          <p class="text-[10px] font-600 text-gray-400 mt-0.5">${stat.label}</p>
+        </div>
+      `).join('');
+    }
+
+    function updateStats() {
+      renderStats();
+      lucide.createIcons();
+    }
+
+    // Greeting time
+    function setGreetingTime() {
+      const hour = new Date().getHours();
+      let greeting = 'Good Morning,';
+      if (hour >= 12 && hour < 17) greeting = 'Good Afternoon,';
+      else if (hour >= 17) greeting = 'Good Evening,';
+      document.getElementById('greeting-time').textContent = greeting;
+    }
+
+    // Bell animation
+    document.getElementById('bell-btn').addEventListener('click', function() {
+      this.querySelector('i').parentElement.classList.add('bell-ring');
+      setTimeout(() => this.querySelector('i').parentElement.classList.remove('bell-ring'), 800);
+    });
+
+    // FAB
+    const fabBtn = document.getElementById('fab-btn');
+    const addModal = document.getElementById('add-modal');
+    const closeModal = document.getElementById('close-modal');
+    const addForm = document.getElementById('add-task-form');
+
+    fabBtn.addEventListener('click', () => {
+      addModal.style.display = 'flex';
+      requestAnimationFrame(() => {
+        addModal.style.opacity = '1';
+        addModal.querySelector('.add-modal-content').style.transform = 'translateY(0)';
+      });
+    });
+
+    function hideModal() {
+      addModal.querySelector('.add-modal-content').style.transform = 'translateY(100%)';
+      addModal.style.opacity = '0';
+      setTimeout(() => { addModal.style.display = 'none'; }, 300);
+    }
+
+    closeModal.addEventListener('click', hideModal);
+    addModal.addEventListener('click', (e) => { if (e.target === addModal) hideModal(); });
+
+    const taskColors = ['#6366f1', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#ec4899'];
+    const taskIcons = ['book-open', 'calculator', 'code-2', 'atom', 'pen-tool', 'globe'];
+
+    addForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const subject = document.getElementById('new-subject').value.trim();
+      const topic = document.getElementById('new-topic').value.trim();
+      const time = document.getElementById('new-time').value.trim();
+      if (!subject || !topic) return;
+
+      tasks.unshift({
+        id: nextId++,
+        subject,
+        topic,
+        time: time || '30 min',
+        color: taskColors[Math.floor(Math.random() * taskColors.length)],
+        icon: taskIcons[Math.floor(Math.random() * taskIcons.length)],
+        completed: false
+      });
+
+      renderTasks();
+      lucide.createIcons();
+      addForm.reset();
+      hideModal();
+    });
+
+    // Nav
+    document.querySelectorAll('.nav-item').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.nav-item').forEach(b => { b.classList.remove('active'); b.classList.add('text-gray-400'); });
+        this.classList.add('active');
+        this.classList.remove('text-gray-400');
+      });
+    });
+
+    // Modal initial state
+    addModal.style.opacity = '0';
+    addModal.querySelector('.add-modal-content').style.transform = 'translateY(100%)';
+
+    // Element SDK
+    const config = { ...defaultConfig };
+
+    function applyConfig(cfg) {
+      const name = cfg.greeting_name || defaultConfig.greeting_name;
+      document.getElementById('greeting-name').textContent = name + '! 👋';
+      document.getElementById('motivational-text').textContent = cfg.motivational_text || defaultConfig.motivational_text;
+      document.getElementById('tasks-section-title').textContent = cfg.tasks_title || defaultConfig.tasks_title;
+      document.getElementById('exams-section-title').textContent = cfg.exams_title || defaultConfig.exams_title;
+
+      const bgColor = cfg.background_color || defaultConfig.background_color;
+      document.getElementById('app-wrapper').style.background = bgColor;
+
+      const textColor = cfg.text_color || defaultConfig.text_color;
+      document.querySelectorAll('.font-800, .font-900').forEach(el => {
+        if (!el.closest('.gradient-header') && !el.closest('.exam-card') && !el.closest('.add-modal-content')) {
+          el.style.color = textColor;
+        }
+      });
+
+      const font = cfg.font_family || defaultConfig.font_family;
+      document.body.style.fontFamily = `${font}, Nunito, sans-serif`;
+
+      const baseSize = cfg.font_size || defaultConfig.font_size;
+      document.querySelectorAll('h1').forEach(el => el.style.fontSize = `${baseSize * 1.7}px`);
+      document.querySelectorAll('h2').forEach(el => el.style.fontSize = `${baseSize * 1.15}px`);
+      document.querySelectorAll('.text-sm').forEach(el => el.style.fontSize = `${baseSize}px`);
+      document.querySelectorAll('.text-xs').forEach(el => el.style.fontSize = `${baseSize * 0.85}px`);
+    }
+
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange: async (cfg) => {
+          Object.assign(config, cfg);
+          applyConfig(config);
+        },
+        mapToCapabilities: (cfg) => ({
+          recolorables: [
+            { get: () => cfg.background_color || defaultConfig.background_color, set: (v) => { cfg.background_color = v; window.elementSdk.setConfig({ background_color: v }); } },
+            { get: () => cfg.header_gradient_start || defaultConfig.header_gradient_start, set: (v) => { cfg.header_gradient_start = v; window.elementSdk.setConfig({ header_gradient_start: v }); } },
+            { get: () => cfg.text_color || defaultConfig.text_color, set: (v) => { cfg.text_color = v; window.elementSdk.setConfig({ text_color: v }); } },
+            { get: () => cfg.primary_action_color || defaultConfig.primary_action_color, set: (v) => { cfg.primary_action_color = v; window.elementSdk.setConfig({ primary_action_color: v }); } },
+            { get: () => cfg.secondary_action_color || defaultConfig.secondary_action_color, set: (v) => { cfg.secondary_action_color = v; window.elementSdk.setConfig({ secondary_action_color: v }); } }
+          ],
+          borderables: [],
+          fontEditable: {
+            get: () => cfg.font_family || defaultConfig.font_family,
+            set: (v) => { cfg.font_family = v; window.elementSdk.setConfig({ font_family: v }); }
+          },
+          fontSizeable: {
+            get: () => cfg.font_size || defaultConfig.font_size,
+            set: (v) => { cfg.font_size = v; window.elementSdk.setConfig({ font_size: v }); }
+          }
+        }),
+        mapToEditPanelValues: (cfg) => new Map([
+          ['greeting_name', cfg.greeting_name || defaultConfig.greeting_name],
+          ['motivational_text', cfg.motivational_text || defaultConfig.motivational_text],
+          ['tasks_title', cfg.tasks_title || defaultConfig.tasks_title],
+          ['exams_title', cfg.exams_title || defaultConfig.exams_title]
+        ])
+      });
+    }
+
+    // Initialize
+    setGreetingTime();
+    renderTasks();
+    renderExams();
+    renderStats();
+    lucide.createIcons();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9dc9bd3fc5393bec',t:'MTc3MzU1OTA1Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
