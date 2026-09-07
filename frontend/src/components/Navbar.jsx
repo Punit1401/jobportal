@@ -115,7 +115,7 @@ export default function NavBar() {
             onClick={handleLogoClick}
             className="cursor-pointer flex-shrink-0 text-2xl font-black text-indigo-600 tracking-tighter hover:text-indigo-800 transition-colors mr-auto"
           >
-            Career and <span className="text-slate-900">Naukri</span>
+            Job <span className="text-slate-900">Portal</span>
           </div>
 
           {/* Desktop Navigation Links */}

@@ -87,8 +87,8 @@ export default function JobConnectPro() {
       `}</style>
 
       {showPromo && promoCampaign && (
-        <div className="fixed inset-0 z-[120] bg-slate-900/55 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-xl bg-white rounded-[32px] border border-slate-200 shadow-2xl p-8 relative">
+        <div className="fixed inset-0 z-[120] pointer-events-none bg-slate-900/55 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="pointer-events-auto w-full max-w-xl bg-white rounded-[32px] border border-slate-200 shadow-2xl p-8 relative">
             <button
               type="button"
               onClick={() => {

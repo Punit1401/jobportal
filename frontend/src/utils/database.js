@@ -2,7 +2,7 @@
 import mongoose from "mongoose";
 
 const MONGO_URI = process.env.MONGO_URI;
-if (!MONGO_URI) throw new Error("⚠️ Please add MONGO_URI to .env.local");
+const connectionUri = MONGO_URI || "mongodb://127.0.0.1:27017/shivengroup";
 
 let cached = global.mongoose;
 if (!cached) cached = global.mongoose = { conn: null, promise: null };
@@ -12,7 +12,7 @@ export async function connectToDB() {
 
   if (!cached.promise) {
     cached.promise = mongoose
-      .connect(MONGO_URI, { dbName: "shivengroup" })
+      .connect(connectionUri, { dbName: "shivengroup" })
       .then((mongoose) => {
         console.log("✅ MongoDB Connected");
         return mongoose;

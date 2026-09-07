@@ -375,8 +375,8 @@ export default function RegisterPage() {
         />
         <div className="relative z-10 flex flex-col justify-between p-16 w-full">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-bold text-white text-xl">C</div>
-            <span className="text-white text-2xl font-bold tracking-tight">Career and Naukri</span>
+            {/* <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-bold text-white text-xl">C</div>
+            <span className="text-white text-2xl font-bold tracking-tight">Career and Naukri</span> */}
           </div>
 
           <div className="max-w-md">

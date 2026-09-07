@@ -1,10 +1,6 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGO_URI;
-
-if (!MONGODB_URI) {
-  throw new Error("⚠️ Please add MONGO_URI to your .env.local file");
-}
+const MONGODB_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/shivengroup";
 
 let isConnected = false; // Track connection
 
