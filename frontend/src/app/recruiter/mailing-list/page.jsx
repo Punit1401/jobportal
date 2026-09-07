@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import RecruiterSidebar from '@/components/RecruiterSidebar';
+import FeatureGuard from '@/components/FeatureGuard';
 import { Layers, Users, Search, Plus, Filter, MoreVertical, Edit2, Trash2, Download, CheckCircle2, Mail, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
@@ -126,6 +127,7 @@ export default function MailingListPage() {
             <RecruiterSidebar activePage="mailinglist" />
             
             <main className="flex-1 p-4 lg:p-10">
+                <FeatureGuard featureName="Mailing List">
                 <div className="max-w-7xl mx-auto space-y-10">
                     
                     {/* Tabs & Header */}
@@ -410,6 +412,7 @@ export default function MailingListPage() {
                     )}
 
                 </div>
+                </FeatureGuard>
             </main>
         </div>
     );

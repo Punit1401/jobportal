@@ -241,6 +241,7 @@
 "use client";
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Eye, EyeOff, Building2, User, Mail, KeyRound, ArrowRight, ShieldCheck, Phone } from 'lucide-react';
 
 export default function RecruiterRegister() {
@@ -355,12 +356,25 @@ export default function RecruiterRegister() {
 
       <div className="w-full lg:w-2/3 flex flex-col p-6 md:p-16 overflow-y-auto">
         <div className="max-w-2xl mx-auto w-full">
-          <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-8">
+          <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-8">
             <div>
               <h1 className="text-4xl font-black text-slate-900 tracking-tighter italic">Recruiter <span className="text-indigo-600 underline decoration-indigo-200">Signup</span></h1>
               <p className="text-slate-500 font-medium mt-2">Scale your team today.</p>
             </div>
             <button onClick={() => router.push('/login')} className="text-xs font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest">Already Registered?</button>
+          </div>
+
+          {/* Role Toggle Switch */}
+          <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-8 max-w-md">
+            <Link href="/register" className="flex-1 text-center py-2.5 rounded-xl text-slate-500 font-medium hover:text-slate-700 hover:bg-slate-200/50 transition-all text-sm">
+              Candidate
+            </Link>
+            <Link href="/recruiter/register" className="flex-1 text-center py-2.5 rounded-xl bg-white text-indigo-600 font-bold shadow-sm text-sm transition-all">
+              Recruiter
+            </Link>
+            <Link href="/serviceprovider/register" className="flex-1 text-center py-2.5 rounded-xl text-slate-500 font-medium hover:text-slate-700 hover:bg-slate-200/50 transition-all text-sm">
+              Provider
+            </Link>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-10">

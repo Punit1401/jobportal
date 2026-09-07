@@ -133,49 +133,162 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
+const RESERVED_SUBDOMAINS = new Set(["www", "admin", "api", "app", "mail", "ftp"]);
+
+function buildRequestHeaders(req) {
+  const headers = new Headers(req.headers);
+  headers.set("x-pathname", req.nextUrl.pathname);
+  return headers;
+}
+
+/** Rewrite username.domain.com → /p/username for published portfolio sites */
+function rewritePortfolioSubdomain(req) {
+  const host = req.headers.get("host") || "";
+  const hostname = host.split(":")[0];
+  const path = req.nextUrl.pathname;
+  const requestHeaders = buildRequestHeaders(req);
+
+  if (path.startsWith("/api") || path.startsWith("/_next") || path.startsWith("/p/")) {
+    return null;
+  }
+
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN;
+  let subdomain = null;
+
+  if (rootDomain && !rootDomain.includes("localhost")) {
+    const rootHost = rootDomain.split(":")[0];
+    if (hostname !== rootHost && hostname !== `www.${rootHost}` && hostname.endsWith(`.${rootHost}`)) {
+      subdomain = hostname.slice(0, -(rootHost.length + 1));
+    }
+  } else if (hostname.endsWith(".localhost")) {
+    subdomain = hostname.replace(/\.localhost$/, "");
+  }
+
+  if (!subdomain || RESERVED_SUBDOMAINS.has(subdomain) || subdomain.includes(".")) {
+    return null;
+  }
+
+  const url = req.nextUrl.clone();
+  url.pathname = `/p/${subdomain}${path === "/" ? "" : path}`;
+  return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+}
+
 export default withAuth(
   function middleware(req) {
+    const subRewrite = rewritePortfolioSubdomain(req);
+    if (subRewrite) return subRewrite;
+
     const token = req.nextauth?.token;
     const path = req.nextUrl.pathname;
     const role = token?.role;
 
-    // ✅ ૧. રજીસ્ટ્રેશન પેજને ચેકમાંથી મુક્ત કરો (આ લાઈન ઉમેરી છે)
-    if (path === "/recruiter/register") {
-      return NextResponse.next();
+    if (path.startsWith("/p/")) {
+      const requestHeaders = buildRequestHeaders(req);
+      return NextResponse.next({ request: { headers: requestHeaders } });
     }
 
-    // ૨. રોલ વાઈઝ સિક્યોરિટી
-    if (path.startsWith("/admin") && role !== "admin") {
-      return NextResponse.redirect(new URL("/login", req.url));
+    // ✅ ૧. રજીસ્ટ્રેશન પેજ અને API ને ચેકમાંથી મુક્ત કરો
+    if (
+      path === "/recruiter/register" ||
+      path === "/serviceprovider/register" ||
+      path === "/api/recruiter/register" ||
+      path === "/api/serviceprovider/register"
+    ) {
+      const requestHeaders = buildRequestHeaders(req);
+      return NextResponse.next({ request: { headers: requestHeaders } });
     }
 
-    if (path.startsWith("/recruiter") && role !== "recruiter") {
+    // Helper function to handle unauthorized access securely
+    const handleUnauthorized = (req) => {
+      if (req.nextUrl.pathname.startsWith("/api/")) {
+        return new NextResponse(JSON.stringify({ error: "Unauthorized access" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
       return NextResponse.redirect(new URL("/login", req.url));
+    };
+
+    // ૨. રોલ વાઈઝ સિક્યોરિટી (Protects BOTH Pages and APIs)
+    if ((path.startsWith("/admin") || path.startsWith("/api/admin")) && role !== "admin" && role !== "staff") {
+      if (
+        (path === "/api/admin/events" ||
+         path === "/api/admin/modules/libraries" ||
+         path === "/api/admin/coupons" ||
+         path.startsWith("/api/admin/modules/")) &&
+        req.method === "GET"
+      ) {
+        const requestHeaders = buildRequestHeaders(req);
+        return NextResponse.next({ request: { headers: requestHeaders } });
+      }
+      if (path === "/api/admin/bulk-vacancies" && (req.method === "GET" || ((role === "user" || role === "candidate") && req.method === "POST"))) {
+        const requestHeaders = buildRequestHeaders(req);
+        return NextResponse.next({ request: { headers: requestHeaders } });
+      }
+      return handleUnauthorized(req);
     }
 
-    if (path.startsWith("/serviceprovider") && role !== "serviceprovider") {
-      return NextResponse.redirect(new URL("/login", req.url));
+    if ((path.startsWith("/recruiter") || path.startsWith("/api/recruiter")) && role !== "recruiter") {
+      if (path === "/api/recruiter/companies") {
+        const requestHeaders = buildRequestHeaders(req);
+        return NextResponse.next({ request: { headers: requestHeaders } });
+      }
+      return handleUnauthorized(req);
     }
 
-    if (path.startsWith("/user") && role !== "user") {
-      return NextResponse.redirect(new URL("/login", req.url));
+    if ((path.startsWith("/serviceprovider") || path.startsWith("/api/serviceprovider")) && role !== "serviceprovider") {
+      return handleUnauthorized(req);
+    }
+
+    if ((path.startsWith("/user") || path.startsWith("/api/user")) && role !== "user" && role !== "candidate") {
+      return handleUnauthorized(req);
     }
 
     // ૩. Cache Control
-    const response = NextResponse.next();
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('Expires', '0');
+    const requestHeaders = buildRequestHeaders(req);
+    const responseWithRequestHeaders = NextResponse.next({ request: { headers: requestHeaders } });
+    responseWithRequestHeaders.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    responseWithRequestHeaders.headers.set('Pragma', 'no-cache');
+    responseWithRequestHeaders.headers.set('Expires', '0');
 
-    return response;
+    return responseWithRequestHeaders;
   },
   {
     callbacks: {
-      // ✅ રજીસ્ટ્રેશન પેજ માટે ટોકન વગર પણ પરમિશન આપવી પડશે
       authorized: ({ token, req }) => {
         const path = req.nextUrl.pathname;
-        if (path === "/recruiter/register") return true;
-        return !!token;
+
+        if (path.startsWith("/p/")) return true;
+        if (
+          path === "/recruiter/register" ||
+          path === "/serviceprovider/register" ||
+          path === "/api/recruiter/register" ||
+          path === "/api/serviceprovider/register"
+        ) return true;
+
+        const host = req.headers.get("host") || "";
+        const hostname = host.split(":")[0];
+        if (hostname.endsWith(".localhost")) {
+          const sub = hostname.replace(/\.localhost$/, "");
+          if (sub && !RESERVED_SUBDOMAINS.has(sub)) return true;
+        }
+        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN;
+        if (rootDomain && !rootDomain.includes("localhost")) {
+          const rootHost = rootDomain.split(":")[0];
+          if (hostname.endsWith(`.${rootHost}`) && hostname !== rootHost && hostname !== `www.${rootHost}`) {
+            return true;
+          }
+        }
+
+        const protectedPrefixes = [
+          "/admin", "/recruiter", "/serviceprovider", "/user",
+          "/api/admin", "/api/recruiter", "/api/serviceprovider", "/api/user"
+        ];
+        if (protectedPrefixes.some((p) => path.startsWith(p))) {
+          return !!token;
+        }
+
+        return true;
       },
     },
     pages: {
@@ -188,9 +301,6 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    "/admin/:path*",
-    "/recruiter/:path*",
-    "/serviceprovider/:path*",
-    "/user/:path*",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

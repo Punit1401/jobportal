@@ -1,9 +1,9 @@
 // app/api/admin/coupons/route.js
 import { NextResponse } from "next/server";
-import connectMongo from "@/lib/mongodb"; // તમારું DB કનેક્શન પાથ
-import Coupon from "@/models/Coupon"; // તમારું Coupon મોડેલ પાથ
+import connectMongo from "@/lib/mongodb"; // Your DB connection path
+import Coupon from "@/models/Coupon"; // Your Coupon model path
 
-// GET: બધી કૂપન્સ મેળવવા માટે
+// GET: To get all coupons
 export async function GET() {
     try {
         await connectMongo();
@@ -14,7 +14,7 @@ export async function GET() {
     }
 }
 
-// POST: નવી કૂપન બનાવવા માટે
+// POST: To create a new coupon
 export async function POST(req) {
     try {
         await connectMongo();
@@ -26,7 +26,7 @@ export async function POST(req) {
     }
 }
 
-// DELETE: કૂપન ડીલીટ કરવા માટે
+// DELETE: To delete a coupon
 export async function DELETE(req) {
     try {
         await connectMongo();

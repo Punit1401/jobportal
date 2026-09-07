@@ -14,6 +14,13 @@ export default function AdminNotificationsPage() {
     const [loadingResponses, setLoadingResponses] = useState(true);
     const [activeTab, setActiveTab] = useState("compose"); // compose or responses
 
+    const [industries, setIndustries] = useState(["All"]);
+    const [professions, setProfessions] = useState(["All"]);
+    const [locations, setLocations] = useState(["All"]);
+    const [filterIndustry, setFilterIndustry] = useState("All");
+    const [filterProfession, setFilterProfession] = useState("All");
+    const [filterLocation, setFilterLocation] = useState("All");
+
     const fetchSentNotifications = async () => {
         setLoading(true);
         try {
@@ -54,9 +61,24 @@ export default function AdminNotificationsPage() {
         }
     };
 
+    const fetchFilters = async () => {
+        try {
+            const res = await fetch('/api/notifications?type=filters');
+            const data = await res.json();
+            if (data.ok) {
+                setIndustries(data.industries || ["All"]);
+                setProfessions(data.professions || ["All"]);
+                setLocations(data.locations || ["All"]);
+            }
+        } catch (error) {
+            console.error("Error fetching filters:", error);
+        }
+    };
+
     useEffect(() => {
         fetchSentNotifications();
         fetchResponses();
+        fetchFilters();
     }, []);
 
     const handleSend = async () => {
@@ -71,7 +93,10 @@ export default function AdminNotificationsPage() {
                     targetRole,
                     title,
                     message,
-                    type
+                    type,
+                    industry: filterIndustry,
+                    profession: filterProfession,
+                    location: filterLocation
                 })
             });
             if (res.ok) {
@@ -149,6 +174,50 @@ export default function AdminNotificationsPage() {
                                         <option value="Info">Information</option>
                                         <option value="Warning">Warning</option>
                                         <option value="Success">Success</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Industry, Profession, and Location filters */}
+                            <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Industry</label>
+                                    <select 
+                                        value={filterIndustry}
+                                        onChange={(e) => setFilterIndustry(e.target.value)}
+                                        className="w-full p-5 rounded-2xl bg-slate-50 border-0 font-bold focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer"
+                                    >
+                                        <option value="All">All Industries</option>
+                                        {industries.filter(i => i !== "All").map((i, idx) => (
+                                            <option key={idx} value={i}>{i}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Profession</label>
+                                    <select 
+                                        value={filterProfession}
+                                        onChange={(e) => setFilterProfession(e.target.value)}
+                                        className="w-full p-5 rounded-2xl bg-slate-50 border-0 font-bold focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer"
+                                        disabled={targetRole === 'recruiter'}
+                                    >
+                                        <option value="All">All Professions</option>
+                                        {professions.filter(p => p !== "All").map((p, idx) => (
+                                            <option key={idx} value={p}>{p}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Location</label>
+                                    <select 
+                                        value={filterLocation}
+                                        onChange={(e) => setFilterLocation(e.target.value)}
+                                        className="w-full p-5 rounded-2xl bg-slate-50 border-0 font-bold focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer"
+                                    >
+                                        <option value="All">All Locations</option>
+                                        {locations.filter(l => l !== "All").map((l, idx) => (
+                                            <option key={idx} value={l}>{l}</option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>

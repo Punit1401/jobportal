@@ -1,15 +1,24 @@
 import connectMongo from "@/lib/mongodb";
 import ServiceForm from "@/models/serviceform";
-import Review from "@/models/Review"; // Review મોડેલ ઈમ્પોર્ટ કરો
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { checkLimit, incrementUsage } from "@/lib/checkSubscription";
 
 export async function POST(req) {
   try {
     await connectMongo();
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+
+    try {
+      await checkLimit(session.user.email, "serviceprovider", "POST_SERVICE");
+    } catch (limitErr) {
+      return NextResponse.json(
+        { success: false, error: limitErr.message, code: limitErr.code },
+        { status: limitErr.status || 403 }
+      );
+    }
 
     const body = await req.json();
 
@@ -23,6 +32,8 @@ export async function POST(req) {
       providerEmail: session.user.email,
       whatsappNumber: body.whatsappNumber,
     });
+
+    await incrementUsage(session.user.email, "serviceprovider", "POST_SERVICE");
 
     return NextResponse.json({ success: true, data: newService });
   } catch (error) {
@@ -41,7 +52,7 @@ export async function PUT(req) {
 
     const updatedService = await ServiceForm.findOneAndUpdate(
       { _id: id, providerEmail: session.user.email },
-      { 
+      {
         $set: {
           title: updateData.title,
           category: updateData.category,
@@ -50,7 +61,7 @@ export async function PUT(req) {
           whatsappNumber: updateData.whatsappNumber,
           providerMobile: updateData.providerMobile,
           providerName: updateData.providerName
-        } 
+        }
       },
       { new: true }
     );
@@ -66,22 +77,46 @@ export async function GET(req) {
     await connectMongo();
     const session = await getServerSession(authOptions);
     const { searchParams } = new URL(req.url);
-    
-    // --- જો બધી સર્વિસ જોઈતી હોય (With Ratings) ---
+
     if (searchParams.get("all") === "true") {
       const services = await ServiceForm.aggregate([
         {
           $lookup: {
-            from: "reviews", // MongoDB માં કલેક્શનનું નામ (Review મોડેલ મુજબ)
-            localField: "providerEmail", // પ્રોવાઈડરના ઈમેલ થી મેચ કરો
-            foreignField: "targetId", 
+            from: "serviceproviders",
+            localField: "providerEmail",
+            foreignField: "email",
+            as: "providerDetails"
+          }
+        },
+        {
+          $lookup: {
+            from: "reviews",
+            let: { providerEmail: "$providerEmail" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$targetId", "$$providerEmail"] },
+                      {
+                        $or: [
+                          { $eq: [{ $ifNull: ["$questionId", ""] }, ""] },
+                          { $eq: [{ $ifNull: ["$answerId", ""] }, ""] }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
             as: "ratings"
           }
         },
         {
           $addFields: {
             averageRating: { $avg: "$ratings.rating" },
-            reviewCount: { $size: "$ratings" }
+            reviewCount: { $size: "$ratings" },
+            providerLogo: { $ifNull: [{ $arrayElemAt: ["$providerDetails.logo", 0] }, ""] }
           }
         },
         { $sort: { createdAt: -1 } }
@@ -90,11 +125,9 @@ export async function GET(req) {
       return NextResponse.json({ success: true, services });
     }
 
-    // --- પ્રોવાઈડર પોતાની સર્વિસ જોવા માંગતો હોય ત્યારે ---
     if (!session) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     const services = await ServiceForm.find({ providerEmail: session.user.email }).sort({ createdAt: -1 });
     return NextResponse.json({ success: true, services });
-
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

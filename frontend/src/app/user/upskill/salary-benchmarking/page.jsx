@@ -2,6 +2,8 @@
 import React, { useState } from "react";
 import { DollarSign, Sparkles, MapPin, Briefcase, TrendingUp, Loader2, ArrowRight, Building, Award, Info } from "lucide-react";
 import UserSidebar from '@/components/UserSidebar';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import FeatureGuard from "@/components/FeatureGuard";
 
 export default function SalaryBenchmarkingPage() {
     const [formData, setFormData] = useState({
@@ -63,7 +65,8 @@ export default function SalaryBenchmarkingPage() {
             <UserSidebar onCollapseChange={setIsSidebarCollapsed} />
 
             <main className={`flex-1 overflow-y-auto transition-all duration-300 pt-20 lg:pt-8 ${isSidebarCollapsed ? "lg:ml-24" : "lg:ml-72"}`}>
-                <div className="p-4 sm:p-6 md:p-8 lg:px-12 max-w-7xl mx-auto space-y-8">
+                <FeatureGuard featureName="Interview Preparation">
+                    <div className="p-4 sm:p-6 md:p-8 lg:px-12 max-w-7xl mx-auto space-y-8">
                     
                     {/* Header */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-4">
@@ -250,6 +253,43 @@ export default function SalaryBenchmarkingPage() {
                                             </div>
                                         </div>
                                     </div>
+                                    
+                                    {/* Salary Progression Modeling Chart */}
+                                    {result.progression && result.progression.length > 0 && (
+                                        <div className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-xl shadow-slate-200/50">
+                                            <h4 className="flex items-center gap-3 font-black text-slate-900 uppercase text-sm tracking-[0.2em] mb-6">
+                                                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
+                                                    <TrendingUp size={18} className="text-indigo-600" />
+                                                </div>
+                                                10-Year Salary Growth Model
+                                            </h4>
+                                            <div className="h-[300px] w-full">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <AreaChart data={result.progression} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                                        <defs>
+                                                            <linearGradient id="salaryGrad" x1="0" y1="0" x2="0" y2="1">
+                                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                                            </linearGradient>
+                                                        </defs>
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                        <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 700}} />
+                                                        <YAxis 
+                                                            axisLine={false} 
+                                                            tickLine={false} 
+                                                            tick={{fill: '#94a3b8', fontSize: 11, fontWeight: 700}}
+                                                            tickFormatter={(tick) => formatCurrency(tick).replace(/\.00$/, '')} 
+                                                        />
+                                                        <Tooltip 
+                                                            formatter={(value) => [formatCurrency(value), "Estimated Salary"]}
+                                                            contentStyle={{backgroundColor: '#1e293b', borderRadius: '12px', border: 'none', color: '#fff'}}
+                                                        />
+                                                        <Area type="monotone" dataKey="salary" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#salaryGrad)" />
+                                                    </AreaChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Insights Section */}
                                     <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-10 text-white shadow-2xl relative overflow-hidden">
@@ -292,6 +332,7 @@ export default function SalaryBenchmarkingPage() {
                     </div>
 
                 </div>
+                </FeatureGuard>
             </main>
         </div>
     );

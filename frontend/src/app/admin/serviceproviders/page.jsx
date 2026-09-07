@@ -298,9 +298,12 @@ export default function AdminSPManager() {
       });
       if (res.ok) {
         fetchProviders();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || "Failed to update status");
       }
     } catch (err) {
-      alert("Error updating status");
+      alert("Error updating status: " + err.message);
     }
   };
 

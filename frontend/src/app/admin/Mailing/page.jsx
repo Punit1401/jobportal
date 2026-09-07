@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import {
   Send, Clock, Layout, Sparkles, Users, UserCheck,
-  ListChecks, ShieldCheck, Filter, Save, Trash2, CheckCircle, X, Check, Briefcase, MapPin
+  ListChecks, ShieldCheck, Filter, Save, Trash2, CheckCircle, X, Check, Briefcase, MapPin, Eye, Edit
 } from "lucide-react";
 
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
@@ -21,6 +21,12 @@ export default function MailingPage() {
   const [customList, setCustomList] = useState([]); // Will store selected user objects
   const [savedLists, setSavedLists] = useState([]);
   const [showFilterModal, setShowFilterModal] = useState(false);
+
+  // List View & Edit Modal States
+  const [viewingList, setViewingList] = useState(null);
+  const [editingList, setEditingList] = useState(null);
+  const [editListName, setEditListName] = useState("");
+  const [editListUsers, setEditListUsers] = useState([]);
 
   // Filter States
   const [filterType, setFilterType] = useState("candidates");
@@ -122,6 +128,37 @@ export default function MailingPage() {
     localStorage.setItem("permanentSavedLists", JSON.stringify(updated));
   };
 
+  const handleSaveListEdit = () => {
+    if (!editListName.trim()) return alert("List name cannot be empty!");
+    const updated = savedLists.map(l => {
+      if (l.id === editingList.id) {
+        return {
+          ...l,
+          name: editListName,
+          users: editListUsers,
+          count: editListUsers.length
+        };
+      }
+      return l;
+    });
+    setSavedLists(updated);
+    localStorage.setItem("permanentSavedLists", JSON.stringify(updated));
+
+    // If active custom list is the one being edited, sync it!
+    const activeList = localStorage.getItem("selectedMailingList");
+    if (activeList) {
+      const parsed = JSON.parse(activeList);
+      // If the current loaded customList matches the original list, update it in UI and state too
+      if (customList.length === editingList.users.length) {
+        setCustomList(editListUsers);
+        localStorage.setItem("selectedMailingList", JSON.stringify(editListUsers));
+      }
+    }
+
+    setEditingList(null);
+    alert("✅ List updated successfully!");
+  };
+
   const handleAction = async (isSchedule = false) => {
     if (!subject || !message) return alert("Subject & Message are required!");
     if (isSchedule && !scheduledTime) return alert("Please select a time!");
@@ -140,15 +177,16 @@ export default function MailingPage() {
           type: target,
           scheduledTime,
           allUsers: target !== "custom",
-          userIds: target === "custom" ? customList.map(u => u.id || u._id) : []
+          userIds: target === "custom" ? customList.map(u => u.id || u._id) : [],
+          emails: target === "custom" ? customList.map(u => u.email).filter(Boolean) : []
         })
       });
 
       const data = await res.json();
-      if (res.ok) {
+      if (res.ok && !data.error) {
         alert(isSchedule ? "✅ Scheduled!" : `🚀 Sent to ${data.sentTo} users!`);
       } else {
-        alert("❌ Error: " + data.error);
+        alert("❌ Error: " + (data.error || "Failed to process"));
       }
     } catch (err) {
       alert("Error processing request");
@@ -259,17 +297,50 @@ export default function MailingPage() {
               <div className="space-y-3">
                 {savedLists.length === 0 && <p className="text-center py-8 text-xs text-slate-300 font-bold uppercase italic">No saved lists</p>}
                 {savedLists.map((list) => (
-                  <div key={list.id} className="group p-4 bg-slate-50 rounded-2xl border border-transparent hover:border-indigo-100 transition-all flex items-center justify-between">
+                  <div key={list.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between gap-2 hover:shadow-sm transition-all">
                     <button
-                      onClick={() => { setCustomList(list.users); setTarget("custom"); }}
-                      className="text-left flex-1"
+                      onClick={() => { 
+                        setCustomList(list.users); 
+                        setTarget("custom"); 
+                        localStorage.setItem("selectedMailingList", JSON.stringify(list.users));
+                      }}
+                      className="text-left flex-1 overflow-hidden"
+                      title="Load list into Mailer target"
                     >
-                      <p className="text-xs font-black text-slate-800 uppercase group-hover:text-indigo-600">{list.name}</p>
+                      <p className="text-xs font-black text-slate-800 uppercase hover:text-indigo-600 truncate">{list.name}</p>
                       <p className="text-[10px] font-bold text-slate-400">{list.count} Users</p>
                     </button>
-                    <button onClick={() => deleteSavedList(list.id)} className="opacity-0 group-hover:opacity-100 p-2 text-red-300 hover:text-red-500 transition-all">
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button 
+                        onClick={() => setViewingList(list)} 
+                        className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                        title="View Users"
+                      >
+                        <Eye size={14} />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setEditingList(list);
+                          setEditListName(list.name);
+                          setEditListUsers(list.users || []);
+                        }} 
+                        className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        title="Edit List"
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          if (confirm(`Delete list "${list.name}"?`)) {
+                            deleteSavedList(list.id);
+                          }
+                        }} 
+                        className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        title="Delete List"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -387,6 +458,130 @@ export default function MailingPage() {
                 className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs shadow-lg shadow-indigo-100 disabled:opacity-50"
               >
                 Use {selectedUsersInModal.length} Selected Users
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- View Mailing List Modal --- */}
+      {viewingList && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-xl rounded-[3rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col max-h-[90vh]">
+            <div className="p-8 bg-slate-50 border-b flex justify-between items-center shrink-0">
+              <div>
+                <h2 className="text-xl font-black uppercase italic">{viewingList.name}</h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{viewingList.count} Users in Saved List</p>
+              </div>
+              <button onClick={() => setViewingList(null)} className="p-2 hover:bg-white rounded-full transition-all"><X size={24} /></button>
+            </div>
+
+            <div className="p-8 space-y-4 overflow-y-auto">
+              <div className="space-y-2">
+                {viewingList.users.map((user, idx) => {
+                  const isString = typeof user === "string";
+                  const name = isString 
+                    ? "Legacy User / ID" 
+                    : (user.name || user.fullName || user.companyName || (user.email ? user.email.split("@")[0] : "Untitled"));
+                  const email = isString ? user : (user.email || "N/A");
+                  const city = isString ? "N/A" : (user.city || 'N/A');
+                  const uid = isString ? user : (user.id || user._id || idx);
+                  return (
+                    <div key={uid} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-black uppercase text-slate-700">{name}</span>
+                        <span className="text-[10px] font-bold text-slate-400">{email} • {city}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-8 bg-slate-50 border-t flex gap-3 shrink-0">
+              <button 
+                onClick={() => {
+                  setCustomList(viewingList.users);
+                  setTarget("custom");
+                  localStorage.setItem("selectedMailingList", JSON.stringify(viewingList.users));
+                  setViewingList(null);
+                  alert(`✅ Loaded list "${viewingList.name}" into Mailer!`);
+                }}
+                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs shadow-lg shadow-indigo-100"
+              >
+                Load list into Mailer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- Edit Mailing List Modal --- */}
+      {editingList && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-xl rounded-[3rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col max-h-[90vh]">
+            <div className="p-8 bg-slate-50 border-b flex justify-between items-center shrink-0">
+              <div>
+                <h2 className="text-xl font-black uppercase italic">Edit Saved List</h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rename and modify user list contents</p>
+              </div>
+              <button onClick={() => setEditingList(null)} className="p-2 hover:bg-white rounded-full transition-all"><X size={24} /></button>
+            </div>
+
+            <div className="p-8 space-y-5 overflow-y-auto">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-2 block">List Name</label>
+                <input 
+                  type="text" 
+                  className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-xs font-bold outline-none focus:border-indigo-500" 
+                  value={editListName} 
+                  onChange={e => setEditListName(e.target.value)} 
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center px-2">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Included Users ({editListUsers.length})</p>
+                </div>
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                  {editListUsers.map((user, idx) => {
+                    const isString = typeof user === "string";
+                    const name = isString 
+                      ? "Legacy User / ID" 
+                      : (user.name || user.fullName || user.companyName || (user.email ? user.email.split("@")[0] : "Untitled"));
+                    const email = isString ? user : (user.email || "N/A");
+                    const city = isString ? "N/A" : (user.city || 'N/A');
+                    const uid = isString ? user : (user.id || user._id || idx);
+                    return (
+                      <div key={uid} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-black uppercase text-slate-700">{name}</span>
+                          <span className="text-[10px] font-bold text-slate-400">{email} • {city}</span>
+                        </div>
+                        <button 
+                          onClick={() => setEditListUsers(prev => prev.filter((_, i) => i !== idx))}
+                          className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                          title="Remove user from list"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {editListUsers.length === 0 && (
+                    <p className="text-center py-8 text-xs text-slate-300 font-bold uppercase italic">List is empty</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8 bg-slate-50 border-t flex gap-3 shrink-0">
+              <button onClick={() => setEditingList(null)} className="flex-1 py-4 text-xs font-black uppercase text-slate-400">Cancel</button>
+              <button
+                onClick={handleSaveListEdit}
+                className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs shadow-lg shadow-indigo-100"
+              >
+                Save Changes
               </button>
             </div>
           </div>

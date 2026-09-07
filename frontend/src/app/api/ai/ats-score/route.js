@@ -48,32 +48,10 @@ export async function POST(req) {
       `;
     }
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost:3000",
-        "X-Title": "ATS Score Analyzer",
-      },
-      body: JSON.stringify({
-        "model": "google/gemini-2.0-flash-001", 
-        "messages": [{ "role": "user", "content": prompt }],
-        "temperature": 0.3,
-        "response_format": { "type": "json_object" }
-      })
-    });
-
-    const data = await response.json();
+    const { fetchWithFallback } = require('@/lib/ai-fallback');
+    const data = await fetchWithFallback([{ "role": "user", "content": prompt }]);trim();
     
-    if (!response.ok) {
-      console.error("OpenRouter Error:", data);
-      throw new Error(data.error?.message || "AI Fetch Failed");
-    }
-
-    let aiContent = data.choices[0].message.content.trim();
-    
-    // JSON ક્લીનિંગ
+    // JSON cleaning
     const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
     const parsedData = JSON.parse(jsonMatch ? jsonMatch[0] : aiContent);
 

@@ -162,7 +162,6 @@ const PhilanthropyPage = () => {
           </div>
         </div>
       </div>
-      <Footer/>
     </div>
   );
 };

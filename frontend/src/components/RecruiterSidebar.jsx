@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { LayoutDashboard, PlusCircle, Briefcase, Users, Settings, LogOut, Menu, X, CheckCircle2, Calendar, Sparkles, Mail, Layers, Bell, Folder, Wallet, Target, BarChart3, ShoppingBag, Star, FileText } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Briefcase, Users, Settings, LogOut, Menu, X, CheckCircle2, Calendar, Sparkles, Mail, Layers, Bell, Folder, Wallet, Target, BarChart3, ShoppingBag, Star, FileText, Video, MessageSquare } from 'lucide-react';
 
 export default function Sidebar({ activePage }) {
   const [isOpen, setIsOpen] = useState(false); // મોબાઈલ મેનુ માટે સ્ટેટ
@@ -11,19 +11,17 @@ export default function Sidebar({ activePage }) {
   return (
     <>
       {/* --- મોબાઈલ માટે ટોપ બાર (જ્યારે સાઈડબાર બંધ હોય ત્યારે દેખાય) --- */}
-      <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b border-slate-100 sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-black italic">S</div>
-          
-        </div>
-        <button onClick={toggleSidebar} className="p-2 bg-slate-50 rounded-xl text-slate-600">
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
+      <div className="lg:hidden fixed top-20 left-0 right-0 z-40 flex items-center justify-between px-4 bg-white border-b border-slate-200 h-12 shadow-sm">
+        <span className="text-sm font-bold text-slate-600">Dashboard Menu</span>
+        <button onClick={toggleSidebar} className="p-1.5 bg-slate-50 rounded-lg text-slate-600 active:scale-95 transition-all">
+          {isOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
+      <div className="h-12 lg:hidden" />
 
       {/* --- ડાર્ક ઓવરલે (મોબાઈલમાં પાછળનો ભાગ ઝાંખો કરવા માટે) --- */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 lg:hidden"
           onClick={toggleSidebar}
         ></div>
@@ -35,15 +33,15 @@ export default function Sidebar({ activePage }) {
         lg:sticky lg:translate-x-0 h-screen
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
       `}>
-        
+
         {/* ક્લોઝ બટન (માત્ર મોબાઈલ માટે) */}
         <button onClick={toggleSidebar} className="lg:hidden absolute right-4 top-6 text-slate-400">
           <X size={20} />
         </button>
 
         <div className="flex items-center gap-2 mb-10 px-2">
-          
-          
+
+
         </div>
 
         {/* --- સ્ક્રોલેબલ નેવિગેશન --- */}
@@ -51,9 +49,9 @@ export default function Sidebar({ activePage }) {
           <Link href="/recruiter/dashboard" onClick={() => setIsOpen(false)}>
             <NavItem icon={<LayoutDashboard size={20} />} label="Dashboard" active={activePage === "dashboard"} />
           </Link>
-          <Link href="/recruiter/profile" onClick={() => setIsOpen(false)}>
+          {/* <Link href="/recruiter/profile" onClick={() => setIsOpen(false)}>
             <NavItem icon="🏢" label="Profile" active={activePage === "profile"} />
-          </Link>
+            </Link> */}
           <Link href="/recruiter/postjob" onClick={() => setIsOpen(false)}>
             <NavItem icon={<PlusCircle size={20} />} label="Post a Job" active={activePage === "postjob"} />
           </Link>
@@ -62,6 +60,12 @@ export default function Sidebar({ activePage }) {
           </Link>
           <Link href="/recruiter/candidate" onClick={() => setIsOpen(false)}>
             <NavItem icon={<Users size={20} />} label="Responses" active={activePage === "candidate"} />
+          </Link>
+          <Link href="/recruiter/followers" onClick={() => setIsOpen(false)}>
+            <NavItem icon={<Users size={20} />} label="Followers" active={activePage === "followers"} />
+          </Link>
+          <Link href="/recruiter/chat" onClick={() => setIsOpen(false)}>
+            <NavItem icon={<MessageSquare size={20} />} label="Chat Inbox" active={activePage === "chat"} />
           </Link>
           <Link href="/recruiter/status" onClick={() => setIsOpen(false)}>
             <NavItem icon={<CheckCircle2 size={20} />} label="My Status" active={activePage === "status"} />
@@ -90,25 +94,34 @@ export default function Sidebar({ activePage }) {
           <Link href="/recruiter/files" onClick={() => setIsOpen(false)}>
             <NavItem icon={<Folder size={20} />} label="Files & Folder" active={activePage === "files"} />
           </Link>
-          <Link href="/recruiter/wallet" onClick={() => setIsOpen(false)}>
+          {/* <Link href="/recruiter/wallet" onClick={() => setIsOpen(false)}>
             <NavItem icon={<Wallet size={20} />} label="Digital Wallet" active={activePage === "wallet"} />
-          </Link>
+            </Link> */}
           <Link href="/recruiter/advertising" onClick={() => setIsOpen(false)}>
             <NavItem icon={<Target size={20} />} label="Advertising" active={activePage === "advertising"} />
           </Link>
           <Link href="/recruiter/analytics" onClick={() => setIsOpen(false)}>
             <NavItem icon={<BarChart3 size={20} />} label="Analytics & Reports" active={activePage === "analytics"} />
           </Link>
-          <Link href="/recruiter/service-request" onClick={() => setIsOpen(false)}>
+          {/* <Link href="/recruiter/service-request" onClick={() => setIsOpen(false)}>
             <NavItem icon={<Settings size={20} />} label="Service Request" active={activePage === "service"} />
-          </Link>
+            </Link> */}
           <Link href="/recruiter/subscriptions" onClick={() => setIsOpen(false)}>
             <NavItem icon={<Star size={20} />} label="My Subscriptions" active={activePage === "subscriptions"} />
           </Link>
           <Link href="/recruiter/retail" onClick={() => setIsOpen(false)}>
             <NavItem icon={<ShoppingBag size={20} />} label="Retail Purchase" active={activePage === "retail"} />
           </Link>
-          
+          <Link href="/recruiter/articles" onClick={() => setIsOpen(false)}>
+            <NavItem icon={<FileText size={20} />} label="Blogs / Articles" active={activePage === "articles"} />
+          </Link>
+          <Link href="/libraries" onClick={() => setIsOpen(false)}>
+            <NavItem icon={<Video size={20} />} label="Knowledge Library" active={activePage === "libraries"} />
+          </Link>
+          <Link href="/recruiter/feedback" onClick={() => setIsOpen(false)}>
+            <NavItem icon={<MessageSquare size={20} />} label="Feedback" active={activePage === "feedback"} />
+          </Link>
+
           {/* <NavItem icon="⚙️" label="Settings" /> */}
         </nav>
 
@@ -124,11 +137,10 @@ export default function Sidebar({ activePage }) {
 // Sidebar Item Helper
 function NavItem({ icon, label, active = false }) {
   return (
-    <div className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl cursor-pointer transition-all ${
-      active 
-        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
-        : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'
-    }`}>
+    <div className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl cursor-pointer transition-all ${active
+      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+      : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'
+      }`}>
       <span className="text-lg">{icon}</span>
       <span className="font-bold text-sm tracking-wide">{label}</span>
     </div>

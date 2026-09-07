@@ -8,7 +8,7 @@ if (!MONGODB_URI) {
 
 let isConnected = false; // Track connection
 
-export default async function connectMongo() {
+async function connectMongo() {
   if (isConnected) return;
 
   try {
@@ -24,4 +24,5 @@ export default async function connectMongo() {
     throw new Error("MongoDB connection failed"); 
   }
 }
-export { connectMongo };
+export default connectMongo;
+export { connectMongo, connectMongo as connectDB };

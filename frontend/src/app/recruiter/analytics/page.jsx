@@ -26,16 +26,34 @@ export default function AnalyticsPage() {
         fetchAnalytics();
     }, []);
     const handleExportReport = () => {
-        alert("Generating your comprehensive recruitment analytics report. A download link will be available shortly.");
+        const csvContent = [
+            ["Recruitment Analytics Report"],
+            ["Generated On", new Date().toLocaleString()],
+            [],
+            ["Metric", "Value"],
+            ["Active Jobs", stats.totalJobs],
+            ["Total Applicants", stats.totalApps],
+            ["Shortlisted Applicants", stats.shortlisted],
+            ["Hire Rate", stats.totalApps > 0 ? `${((stats.shortlisted / stats.totalApps) * 100).toFixed(1)}%` : "0%"]
+        ].map(e => e.join(",")).join("\n");
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `recruitment_analytics_report_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     return (
         <div className="flex min-h-screen bg-[#FDFEFF]">
             <RecruiterSidebar activePage="analytics" />
-            
+
             <main className="flex-1 p-4 lg:p-10">
                 <div className="max-w-7xl mx-auto space-y-10">
-                    
+
                     {/* Header */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                         <div>
@@ -43,7 +61,7 @@ export default function AnalyticsPage() {
                             <p className="text-slate-500 font-medium mt-1">Deep dive into your recruitment performance and hiring data.</p>
                         </div>
                         <div className="flex gap-4">
-                            <button 
+                            <button
                                 onClick={handleExportReport}
                                 className="flex items-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-[24px] font-black shadow-xl shadow-slate-200 hover:-translate-y-1 transition-all"
                             >
@@ -92,80 +110,23 @@ export default function AnalyticsPage() {
                     </div>
 
                     {/* Visual Charts */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        
-                        {/* Hiring Pipeline Chart */}
-                        <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3">
-                                    <BarChart3 className="text-indigo-600" size={24} />
-                                    Application Funnel
-                                </h3>
-                                <button className="p-3 bg-slate-50 rounded-xl text-slate-400"><PieChart size={20} /></button>
-                            </div>
-                            
-                            <div className="space-y-6 pt-4">
-                                {[
-                                    { label: "Applied", value: 1200, color: "bg-slate-200" },
-                                    { label: "Screened", value: 850, color: "bg-indigo-300" },
-                                    { label: "Interviewed", value: 450, color: "bg-indigo-500" },
-                                    { label: "Offered", value: 120, color: "bg-indigo-700" },
-                                    { label: "Hired", value: 85, color: "bg-slate-900" }
-                                ].map((step, i) => (
-                                    <div key={i} className="space-y-2">
-                                        <div className="flex justify-between text-sm font-bold">
-                                            <span className="text-slate-500">{step.label}</span>
-                                            <span className="text-slate-900">{step.value}</span>
-                                        </div>
-                                        <div className="h-3 bg-slate-50 rounded-full overflow-hidden">
-                                            <div 
-                                                className={`h-full ${step.color} rounded-full transition-all duration-1000`} 
-                                                style={{ width: `${(step.value / 1200) * 100}%` }}
-                                            ></div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                    <div className="grid grid-cols-1 gap-8">
 
-                        {/* Top Channels */}
-                        <div className="bg-slate-900 p-10 rounded-[40px] text-white shadow-2xl space-y-8 overflow-hidden relative">
-                            <div className="absolute top-0 right-0 p-10 opacity-10">
-                                <TrendingUp size={120} />
-                            </div>
-                            <div className="relative z-10">
-                                <h3 className="text-2xl font-black mb-8 flex items-center gap-3">
-                                    <Target className="text-indigo-400" size={24} />
-                                    Top Talent Channels
-                                </h3>
-                                <div className="space-y-8">
-                                    {[
-                                        { name: "Direct Portal", share: 45, icon: <CheckCircle2 className="text-emerald-400" /> },
-                                        { name: "LinkedIn Integration", share: 30, icon: <CheckCircle2 className="text-blue-400" /> },
-                                        { name: "Employee Referral", share: 15, icon: <CheckCircle2 className="text-amber-400" /> },
-                                        { name: "Other Sources", share: 10, icon: <CheckCircle2 className="text-slate-400" /> }
-                                    ].map((channel, i) => (
-                                        <div key={i} className="flex items-center gap-6">
-                                            <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md">
-                                                {channel.icon}
-                                            </div>
-                                            <div className="flex-1 space-y-1">
-                                                <div className="flex justify-between text-sm font-bold">
-                                                    <span>{channel.name}</span>
-                                                    <span className="text-indigo-400">{channel.share}%</span>
-                                                </div>
-                                                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-indigo-500 w-[45%]" style={{ width: `${channel.share}%` }}></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="mt-12 p-6 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-md">
-                                    <p className="text-slate-400 text-xs font-medium leading-relaxed italic">
-                                        "Direct Portal usage has grown by 15% this month, reducing recruitment costs by ₹12,000."
-                                    </p>
-                                </div>
+                        {/* Weekly Applicant Performance */}
+                        <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
+                            <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+                                <BarChart3 className="text-indigo-600" size={24} />
+                                Weekly Applicant Activity
+                            </h3>
+                            <div className="h-80 w-full bg-slate-50 rounded-[40px] flex items-end justify-between p-8 gap-3">
+                                {performance.length > 0 ? performance.map((p, i) => (
+                                    <div key={i} className="flex-1 bg-indigo-100 hover:bg-indigo-600 rounded-full transition-all duration-500 cursor-pointer group relative" style={{ height: `${Math.min(100, (p.apps / (Math.max(...performance.map(x => x.apps)) || 1)) * 100)}%` }}>
+                                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-3 py-1 rounded-lg text-[10px] font-black opacity-0 group-hover:opacity-100 transition-all">{p.apps} apps</div>
+                                        <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] font-black text-slate-400">{p.name}</span>
+                                    </div>
+                                )) : (
+                                    <div className="w-full h-full flex items-center justify-center text-slate-300 font-bold italic">No data for this week</div>
+                                )}
                             </div>
                         </div>
 

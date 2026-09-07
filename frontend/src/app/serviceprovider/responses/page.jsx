@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Sidebar from '@/components/Serviceprovidersidbar';
+import FeatureGuard from '@/components/FeatureGuard';
 import { Send, User, Loader2, MessageSquare, Clock } from 'lucide-react';
 
 export default function ResponsesPage() {
@@ -26,6 +27,7 @@ export default function ResponsesPage() {
     <div className="min-h-screen bg-[#FDFEFF] flex flex-col lg:flex-row">
       <Sidebar activePage="responses" />
       <main className="flex-1 p-4 md:p-8">
+        <FeatureGuard featureName="Responses">
         <header className="mb-8">
           <h1 className="text-2xl font-black text-slate-900">Client Responses</h1>
           <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">Inbox ({inquiries.length})</p>
@@ -62,6 +64,7 @@ export default function ResponsesPage() {
             </div>
           )}
         </div>
+        </FeatureGuard>
       </main>
     </div>
   );

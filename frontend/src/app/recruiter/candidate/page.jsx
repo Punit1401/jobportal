@@ -1,19 +1,51 @@
 "use client";
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import RecruiterSidebar from '@/components/RecruiterSidebar';
-import { useSearchParams } from 'next/navigation';
+import FeatureGuard from '@/components/FeatureGuard';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useSession } from "next-auth/react";
 import {
   Mail, ExternalLink, Loader2, Calendar, User, Briefcase, Phone,
   MapPin, X, CheckCircle, XCircle, GraduationCap, Globe, FileText, Trash2,
-  Clock, Layers, Star, Search, Filter, IndianRupee, Rocket
+  Clock, Layers, Star, Search, Filter, IndianRupee, Rocket, MessageSquare
 } from 'lucide-react';
 
 function CandidateListContent() {
+  const { data: session } = useSession();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const searchFromUrl = searchParams.get('search') || "";
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [startingChat, setStartingChat] = useState(false);
+
+  const handleStartChat = async (user) => {
+    if (startingChat) return;
+    try {
+      setStartingChat(true);
+      const res = await fetch("/api/chat/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          candidateId: user.userId,
+          candidateEmail: user.email,
+          recruiterId: session?.user?.id
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        router.push("/recruiter/chat");
+      } else {
+        alert(data.error || "Failed to start chat with candidate.");
+      }
+    } catch (err) {
+      console.error("Start chat error:", err);
+      alert("Error starting chat.");
+    } finally {
+      setStartingChat(false);
+    }
+  };
 
   // --- ફિલ્ટર સ્ટેટ્સ ---
   const [searchQuery, setSearchQuery] = useState(searchFromUrl);
@@ -103,118 +135,120 @@ function CandidateListContent() {
       <RecruiterSidebar activePage="candidate" />
 
       <main className="flex-1 p-6 md:p-10 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Applications Management</h1>
-            <button onClick={fetchCandidates} className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition-all">
-              <Globe size={18} className="text-indigo-600" />
-            </button>
-          </div>
-
-          {/* --- MULTI-FILTER BAR --- */}
-          <div className="space-y-4 mb-8">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                type="text"
-                placeholder="Search by candidate name or email..."
-                className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none font-medium transition-all"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+        <FeatureGuard featureName="Responses">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Applications Management</h1>
+              <button onClick={fetchCandidates} className="p-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm transition-all">
+                <Globe size={18} className="text-indigo-600" />
+              </button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm text-xs font-bold text-slate-600 outline-none">
-                <option value="All">All Roles</option>
-                {uniqueRoles.filter(r => r !== "All").map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
+            {/* --- MULTI-FILTER BAR --- */}
+            <div className="space-y-4 mb-8">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search by candidate name or email..."
+                  className="w-full pl-12 pr-4 py-4 bg-white border border-slate-100 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none font-medium transition-all"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
 
-              <select value={expFilter} onChange={(e) => setExpFilter(e.target.value)} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm text-xs font-bold text-slate-600 outline-none">
-                <option value="All">All Experience</option>
-                {uniqueExps.filter(e => e !== "All").map(e => <option key={e} value={e}>{e}</option>)}
-              </select>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm text-xs font-bold text-slate-600 outline-none">
+                  <option value="All">All Roles</option>
+                  {uniqueRoles.filter(r => r !== "All").map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
 
-              <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm text-xs font-bold text-slate-600 outline-none">
-                <option value="All">All Categories</option>
-                {uniqueCats.filter(c => c !== "All").map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+                <select value={expFilter} onChange={(e) => setExpFilter(e.target.value)} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm text-xs font-bold text-slate-600 outline-none">
+                  <option value="All">All Experience</option>
+                  {uniqueExps.filter(e => e !== "All").map(e => <option key={e} value={e}>{e}</option>)}
+                </select>
 
-              <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm text-xs font-bold text-slate-600 outline-none">
-                <option value="All">All Types</option>
-                {uniqueTypes.filter(t => t !== "All").map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+                <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm text-xs font-bold text-slate-600 outline-none">
+                  <option value="All">All Categories</option>
+                  {uniqueCats.filter(c => c !== "All").map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
 
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm text-xs font-bold text-slate-600 outline-none">
-                <option value="All">All Status</option>
-                <option value="Pending">Pending</option>
-                <option value="Approved">Approved</option>
-                <option value="Rejected">Rejected</option>
-              </select>
+                <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm text-xs font-bold text-slate-600 outline-none">
+                  <option value="All">All Types</option>
+                  {uniqueTypes.filter(t => t !== "All").map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm text-xs font-bold text-slate-600 outline-none">
+                  <option value="All">All Status</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+              </div>
             </div>
-          </div>
 
-          <div className="bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden">
-            {loading ? (
-              <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-indigo-600" size={40} /></div>
-            ) : filteredList.length === 0 ? (
-              <div className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest text-sm">No matching applications found</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left min-w-[800px] md:min-w-full">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Candidate</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Job Role & Project</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Bid / Exp</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                    <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50 text-sm">
-                  {filteredList.map((app) => (
-                    <tr key={app._id} className="hover:bg-slate-50 transition-all cursor-pointer" onClick={() => setSelectedUser(app)}>
-                      <td className="px-6 py-5 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">{app.name?.charAt(0)}</div>
-                        <div>
-                          <p className="font-bold text-slate-800">{app.name}</p>
-                          <p className="text-xs text-slate-400 font-medium">{app.email}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5">
-                        <p className="font-bold text-slate-600">{app.role || app.jobRole || "N/A"}</p>
-                        <p className="text-[10px] font-black text-indigo-500 uppercase">{app.projectName || app.category || "General"}</p>
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="flex flex-col gap-1">
-                          {app.bidAmount ? (
-                            <span className="font-black text-emerald-600 flex items-center gap-1 text-xs tracking-tighter">
-                              <IndianRupee size={12} /> {app.bidAmount}
+            <div className="bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden">
+              {loading ? (
+                <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-indigo-600" size={40} /></div>
+              ) : filteredList.length === 0 ? (
+                <div className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest text-sm">No matching applications found</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left min-w-[800px] md:min-w-full">
+                    <thead className="bg-slate-50 border-b border-slate-100">
+                      <tr>
+                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Candidate</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Job Role & Project</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Bid / Exp</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                        <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 text-sm">
+                      {filteredList.map((app) => (
+                        <tr key={app._id} className="hover:bg-slate-50 transition-all cursor-pointer" onClick={() => setSelectedUser(app)}>
+                          <td className="px-6 py-5 flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">{app.name?.charAt(0)}</div>
+                            <div>
+                              <p className="font-bold text-slate-800">{app.name}</p>
+                              <p className="text-xs text-slate-400 font-medium">{app.email}</p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5">
+                            <p className="font-bold text-slate-600">{app.role || app.jobRole || "N/A"}</p>
+                            <p className="text-[10px] font-black text-indigo-500 uppercase">{app.projectName || app.category || "General"}</p>
+                          </td>
+                          <td className="px-6 py-5">
+                            <div className="flex flex-col gap-1">
+                              {app.bidAmount ? (
+                                <span className="font-black text-emerald-600 flex items-center gap-1 text-xs tracking-tighter">
+                                  <IndianRupee size={12} /> {app.bidAmount}
+                                </span>
+                              ) : (
+                                <span className="font-bold text-slate-600">{app.experience || "Fresher"}</span>
+                              )}
+                              <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-bold w-fit italic">{app.jobType || "Full-time"}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${(app.status || 'Pending') === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
+                                (app.status || 'Pending') === 'Rejected' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'
+                              }`}>
+                              {app.status || 'Pending'}
                             </span>
-                          ) : (
-                            <span className="font-bold text-slate-600">{app.experience || "Fresher"}</span>
-                          )}
-                          <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md font-bold w-fit italic">{app.jobType || "Full-time"}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${(app.status || 'Pending') === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
-                            (app.status || 'Pending') === 'Rejected' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'
-                          }`}>
-                          {app.status || 'Pending'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-5 text-right">
-                        <button className="text-indigo-600 font-bold text-xs hover:underline">View Details</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            <button className="text-indigo-600 font-bold text-xs hover:underline">View Details</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-            )}
           </div>
-        </div>
+        </FeatureGuard>
 
         {/* --- FULL DETAILS SLIDE-OVER --- */}
         {selectedUser && (
@@ -226,6 +260,14 @@ function CandidateListContent() {
                   <p className="text-[9px] md:text-[10px] font-black text-indigo-600 uppercase">ID: {selectedUser._id?.slice(-8)}</p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => handleStartChat(selectedUser)}
+                    disabled={startingChat}
+                    className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                  >
+                    {startingChat ? <Loader2 size={14} className="animate-spin" /> : <MessageSquare size={14} />}
+                    Chat
+                  </button>
                   <button onClick={() => handleDelete(selectedUser._id)} className="p-2 hover:bg-rose-50 rounded-xl text-rose-500 transition-colors"><Trash2 size={20} /></button>
                   <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors"><X size={20} /></button>
                 </div>

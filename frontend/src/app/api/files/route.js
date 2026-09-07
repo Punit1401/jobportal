@@ -3,6 +3,7 @@ import connectMongo from "@/lib/mongodb";
 import UserFile from "@/models/UserFile";
 import Recruiter from "@/models/Recruiter";
 import ServiceProvider from "@/models/serviceprovider";
+import StorageSettings from "@/models/StorageSettings";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
@@ -29,20 +30,25 @@ export async function GET(req) {
     if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const parentId = searchParams.get('parentId') || null;
-
-    const files = await UserFile.find({ 
-        userId: session.user.id,
-        parentId: parentId === 'null' ? null : parentId 
-    }).sort({ type: 1, name: 1 });
+    const parentId = searchParams.get('parentId');
 
     const profile = await getProfile(session.user.email, session.user.role);
-    
-    // Improved fallback for partial subscription objects
+    if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+
+    const settings = await StorageSettings.findOne() || { defaultRecruiterSpaceMB: 500, defaultServiceProviderSpaceMB: 500 };
+    const defaultMB = session.user.role === 'recruiter' ? settings.defaultRecruiterSpaceMB : settings.defaultServiceProviderSpaceMB;
+    const limit = defaultMB + (profile.purchasedStorageMB || 0);
+
     const storageInfo = {
-        storageUsed: profile?.subscription?.storageUsed ?? 0,
-        storageLimit: profile?.subscription?.storageLimit ?? 100
+        storageUsed: profile.subscription?.storageUsed || 0,
+        storageLimit: limit
     };
+
+    const query = { userId: session.user.id };
+    if (parentId && parentId !== 'null') query.parentId = parentId;
+    else query.parentId = null;
+
+    const files = await UserFile.find(query).sort({ type: 1, name: 1 });
 
     return NextResponse.json({ ok: true, data: files, storage: storageInfo });
   } catch (err) {
@@ -59,15 +65,18 @@ export async function POST(req) {
     const { name, type, size, url, parentId, mimetype } = await req.json();
 
     const profile = await getProfile(session.user.email, session.user.role);
-    if (!profile) return NextResponse.json({ error: "User profile not found" }, { status: 404 });
+    if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
     if (type === 'file') {
         const fileSizeMB = size / (1024 * 1024);
-        const currentUsed = profile.subscription?.storageUsed || 0;
-        const limit = profile.subscription?.storageLimit || 100;
+        const currentUsed = profile?.subscription?.storageUsed || 0;
+        
+        const settings = await StorageSettings.findOne() || { defaultRecruiterSpaceMB: 500, defaultServiceProviderSpaceMB: 500 };
+        const defaultMB = session.user.role === 'recruiter' ? settings.defaultRecruiterSpaceMB : settings.defaultServiceProviderSpaceMB;
+        const limit = defaultMB + (profile.purchasedStorageMB || 0);
 
         if (currentUsed + fileSizeMB > limit) {
-            return NextResponse.json({ error: "Storage limit exceeded. Please upgrade your plan." }, { status: 400 });
+            return NextResponse.json({ error: "Storage limit exceeded. Please upgrade your storage pack." }, { status: 400 });
         }
 
         await updateStorage(session.user.email, session.user.role, fileSizeMB);

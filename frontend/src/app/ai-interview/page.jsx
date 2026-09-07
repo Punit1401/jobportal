@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import InterviewRecorder from "@/components/InterviewRecorder";
+import LiveInterviewAssistant from "@/components/LiveInterviewAssistant";
 
 export default function AIInterview() {
   const [tab, setTab] = useState("mock"); // "mock" or "speech"
@@ -97,9 +99,41 @@ export default function AIInterview() {
         >
           Speech & Tone Analysis
         </button>
+        <button
+          className={`px-4 py-2 rounded-md ${tab === "record" ? "bg-blue-600 text-white" : "bg-slate-100"}`}
+          onClick={() => setTab("record")}
+        >
+          Record Interview
+        </button>
+        <button
+          className={`px-4 py-2 rounded-md ${tab === "assistant" ? "bg-blue-600 text-white" : "bg-slate-100"}`}
+          onClick={() => setTab("assistant")}
+        >
+          Live Interview Assistant
+        </button>
       </div>
 
       {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">{error}</div>}
+
+      {/* Record Interview Tab */}
+      {tab === "record" && (
+        <div className="max-w-3xl">
+          <p className="text-sm text-slate-500 mb-4">
+            Record yourself answering interview questions, review your performance, and save the recording.
+          </p>
+          <InterviewRecorder />
+        </div>
+      )}
+
+      {/* Live Interview Assistant Tab (interviewer-side co-pilot) */}
+      {tab === "assistant" && (
+        <div>
+          <p className="text-sm text-slate-500 mb-4">
+            For interviewers: live transcription with AI-suggested follow-up questions, answer scoring, and a final candidate evaluation. Works best in Chrome/Edge.
+          </p>
+          <LiveInterviewAssistant />
+        </div>
+      )}
 
       {/* Mock Interview Tab */}
       {tab === "mock" && (

@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASS,
   },
 });
-export const revalidate = 0; // આનાથી API કેશ નહીં થાય અને હંમેશા નવો ડેટા આપશે
+export const revalidate = 0; // This will prevent API caching and always provide fresh data
 export async function GET(req) {
   try {
     await connectMongo();
@@ -30,7 +30,7 @@ export async function GET(req) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // --- ફેરફાર અહીં છે: માત્ર પ્રોફાઇલ ભરેલી હોય તેવા જ રિક્રુટર બતાવશે ---
+    // --- Change here: Will only show recruiters whose profiles are filled ---
     const recruiters = await Recruiter.find({
       $or: [
         { gstNo: { $exists: true, $ne: "" } },
@@ -93,15 +93,38 @@ export async function PUT(req) {
     }
 
     if (subject) {
-      await transporter.sendMail({
-        from: `"Shiven Jobs" <${process.env.SMTP_USER}>`,
-        to: updated.email,
-        subject,
-        html: htmlContent,
-      });
+      try {
+        await transporter.sendMail({
+          from: `"Shiven Jobs" <${process.env.SMTP_USER}>`,
+          to: updated.email,
+          subject,
+          html: htmlContent,
+        });
+      } catch (emailErr) {
+        console.warn("Failed to send recruiter verification email:", emailErr.message);
+      }
     }
 
     return NextResponse.json({ success: true, updatedRecruiter: updated });
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+// DELETE: Delete recruiter by id
+export async function DELETE(req) {
+  try {
+    await connectMongo();
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
+
+    await Recruiter.findByIdAndDelete(id);
+    return NextResponse.json({ success: true, message: "Recruiter deleted successfully" });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

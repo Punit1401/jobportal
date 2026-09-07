@@ -396,7 +396,20 @@ export default function RegisterPage() {
         <div className="w-full max-w-md py-10">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-slate-900 mb-2">Create Account</h1>
-            <p className="text-slate-500 font-medium">Join as a <span className="text-indigo-600 font-bold">Candidate</span> to explore opportunities.</p>
+            <p className="text-slate-500 font-medium mb-6">Join as a <span className="text-indigo-600 font-bold">Candidate</span> to explore opportunities.</p>
+            
+            {/* Role Toggle Switch */}
+            <div className="flex bg-slate-100 p-1.5 rounded-2xl">
+              <Link href="/register" className="flex-1 text-center py-2.5 rounded-xl bg-white text-indigo-600 font-bold shadow-sm text-sm transition-all">
+                Candidate
+              </Link>
+              <Link href="/recruiter/register" className="flex-1 text-center py-2.5 rounded-xl text-slate-500 font-medium hover:text-slate-700 hover:bg-slate-200/50 transition-all text-sm">
+                Recruiter
+              </Link>
+              <Link href="/serviceprovider/register" className="flex-1 text-center py-2.5 rounded-xl text-slate-500 font-medium hover:text-slate-700 hover:bg-slate-200/50 transition-all text-sm">
+                Provider
+              </Link>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -488,20 +501,9 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          {/* RECRUITER & SERVICE PROVIDER LINKS */}
+          {/* LOGIN LINK */}
           <div className="mt-8 pt-8 border-t border-slate-100">
-            <p className="text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Not a Candidate?</p>
-            <div className="grid grid-cols-2 gap-4">
-              <Link href="/recruiter/register" className="flex flex-col items-center p-4 rounded-[2rem] bg-slate-50 border border-slate-100 hover:border-indigo-200 hover:bg-white hover:shadow-xl hover:shadow-indigo-50 transition-all group">
-                <Briefcase className="text-slate-400 group-hover:text-indigo-600 mb-2 transition-colors" size={24} />
-                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Recruiter</span>
-              </Link>
-              {/* <Link href="/serviceprovider/register" className="flex flex-col items-center p-4 rounded-[2rem] bg-slate-50 border border-slate-100 hover:border-indigo-200 hover:bg-white hover:shadow-xl hover:shadow-indigo-50 transition-all group">
-                <Settings className="text-slate-400 group-hover:text-indigo-600 mb-2 transition-colors" size={24} />
-                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Provider</span>
-              </Link> */}
-            </div>
-            <p className="text-center text-slate-500 text-sm mt-8 font-medium">
+            <p className="text-center text-slate-500 text-sm font-medium">
               Already have an account? <Link href="/login" className="text-indigo-600 font-bold hover:underline decoration-2 underline-offset-4">Sign in</Link>
             </p>
           </div>

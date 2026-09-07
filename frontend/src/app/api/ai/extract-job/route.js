@@ -1,72 +1,39 @@
-// import { GoogleGenerativeAI } from "@google/generative-ai";
-// import { NextResponse } from "next/server";
-
-// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// export async function POST(req) {
-//   try {
-//     const { rawText } = await req.json();
-//     if (!rawText) return NextResponse.json({ error: "No text provided" }, { status: 400 });
-
-//     const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-
-//     const prompt = `
-//       Extract Job and Company details from the text below. 
-//       Return ONLY a JSON object. No markdown, no backticks.
-      
-//       Text: "${rawText.substring(0, 5000)}" 
-
-//       Structure:
-//       {
-//         "job": { 
-//           "title": "", 
-//           "category": "", 
-//           "jobType": "Full-time", 
-//           "location": "", 
-//           "salaryRange": "", 
-//           "experienceLevel": "",
-//           "description": "" 
-//         },
-//         "company": { 
-//           "name": "", 
-//           "industry": "", 
-//           "website": "" 
-//         }
-//       }
-//     `;
-
-//     const result = await model.generateContent(prompt);
-//     let text = result.response.text().trim();
-    
-//     if (text.includes("{")) {
-//         text = text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1);
-//     }
-    
-//     return NextResponse.json(JSON.parse(text));
-//   } catch (err) {
-//     console.error("AI_ERROR:", err);
-//     return NextResponse.json({ error: err.message }, { status: 500 });
-//   }
-// }
 import { NextResponse } from "next/server";
+import rateLimit from "@/lib/rate-limit";
+
+const limiter = rateLimit({
+  interval: 60 * 1000,
+  uniqueTokenPerInterval: 500,
+});
 
 export async function POST(req) {
   try {
+    const ip = req.headers.get("x-forwarded-for") || req.ip || "127.0.0.1";
+    try {
+      await limiter.check(5, ip); // Max 5 extractions per minute per IP
+    } catch {
+      return NextResponse.json({ error: "Too many AI requests. Please try again later." }, { status: 429 });
+    }
+
     const { rawText } = await req.json();
     if (!rawText) return NextResponse.json({ error: "No text provided" }, { status: 400 });
 
     const prompt = `Extract ALL Job and Company details from the text below. 
+    If the text contains multiple job vacancies or positions, extract all of them into the "jobs" array.
     Return ONLY a valid JSON object. Do not include markdown or backticks.
     
     Text: "${rawText.substring(0, 4000)}" 
 
     Return this exact JSON structure:
     {
-      "job": { 
-        "title": "", "category": "", "jobType": "Full-time", "location": "", 
-        "salaryRange": "", "experienceLevel": "", "description": "", "requirements": "", 
-        "deadline": "", "industry": "", "profession": "", "designation": "", "department": "" 
-      },
+      "jobs": [
+        { 
+          "title": "", "category": "", "jobType": "Full-time", "location": "", 
+          "salaryRange": "", "experienceLevel": "", "description": "", "requirements": "", 
+          "deadline": "", "industry": "", "profession": "", "designation": "", "department": "",
+          "applyLink": "", "applyEmail": "", "applyPhone": "", "applyPersonName": ""
+        }
+      ],
       "company": { 
         "companyName": "", "tagline": "", "industry": "", "department": "", 
         "profession": "", "designation": "", "website": "", "email": "", 
@@ -77,28 +44,10 @@ export async function POST(req) {
       }
     }`;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost:3000",
-        "X-Title": "Job Portal",
-      },
-      body: JSON.stringify({
-        "model": "google/gemini-2.0-flash-001", 
-        "messages": [{ "role": "user", "content": prompt }],
-        "temperature": 0.1,
-      })
-    });
+    const { fetchWithFallback } = require('@/lib/ai-fallback');
+    let aiContent = await fetchWithFallback([{ "role": "user", "content": prompt }], 0.1);
 
-    const data = await response.json();
-    
-    if (!response.ok) throw new Error(data.error?.message || "AI Fetch Failed");
-
-    let aiContent = data.choices[0].message.content.trim();
-    
-    // ક્લીનિંગ: જો AI માર્કડાઉન મોકલે (```json ... ```) તો તેને દૂર કરવા
+    // Cleaning: If AI sends markdown (```json ... ```), remove it
     if (aiContent.startsWith("```")) {
       aiContent = aiContent.replace(/```json|```/g, "").trim();
     }

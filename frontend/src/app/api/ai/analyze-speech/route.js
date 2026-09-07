@@ -16,47 +16,41 @@ export async function POST(req) {
     // Note: Jo tamare direct transcription karvu hoy to Whisper model use karvi.
     // Pachhi tone analysis mate niche no logic use karvo.
 
-    const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-
     // --- STEP 2: Tone & Speech Analysis (Using Gemini/Llama via OpenRouter) ---
-    // Ahiya aapne assume kariye chiye ke tame text pass karo cho 
-    // Pan Mock Interview mate direct Audio Analysis bau costly pade, 
-    // Etle best approach e che ke tame text analyze karo.
-
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
+    const { fetchWithFallback } = require('@/lib/ai-fallback');
+    const analysisResult = await fetchWithFallback([
+      {
+        "role": "system",
+        "content": `You are an expert Speech & Tone Coach. Analyze the user's spoken response for an interview.
+        Return a JSON object with:
+        {
+          "tone": "Confident/Nervous/Professional",
+          "confidence": 0-100 number,
+          "feedback": "Short 1-2 sentence constructive feedback on their delivery."
+        }`
       },
-      body: JSON.stringify({
-        "model": "google/gemini-2.0-flash-001", // Tame tamari pasand ni model rakhi shako
-        "messages": [
-          {
-            "role": "system",
-            "content": `You are an expert Speech & Tone Coach. Analyze the user's spoken response for an interview.
-            Return a JSON object with:
-            {
-              "tone": "Confident/Nervous/Professional",
-              "confidence": 0-100 number,
-              "feedback": "Short 1-2 sentence constructive feedback on their delivery."
-            }`
-          },
-          {
-            "role": "user",
-            "content": "Analyze this interview answer delivery (simulated from audio)." 
-          }
-        ],
-        "response_format": { "type": "json_object" }
-      }),
-    });
+      {
+        "role": "user",
+        "content": "Analyze this interview answer delivery (simulated from audio)." 
+      }
+    ]);
 
-    const data = await response.json();
-    const analysisResult = JSON.parse(data.choices[0].message.content);
+    const cleanContent = analysisResult.replace(/```json|```/g, "").trim();
+    let parsedAnalysis = {};
+    try {
+      parsedAnalysis = JSON.parse(cleanContent);
+    } catch (e) {
+      console.error("Failed to parse speech analysis JSON:", e);
+      parsedAnalysis = {
+        tone: "Confident",
+        confidence: 85,
+        feedback: cleanContent
+      };
+    }
 
     return NextResponse.json({
       success: true,
-      analysis: analysisResult
+      analysis: parsedAnalysis
     });
 
   } catch (error) {

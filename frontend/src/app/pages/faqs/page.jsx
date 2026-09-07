@@ -116,7 +116,6 @@ export default function FAQPage() {
           </button>
         </div>
       </div>
-      <Footer/>
     </div>
   );
 }

@@ -33,7 +33,7 @@ export default function ContactManagementPage() {
     fetchContacts();
   }, []);
 
-  const filterCategories = ["All", "Candidate", "Recruiter", "ServiceProvider", "Candidate Job"];
+  const filterCategories = ["All", "Candidate", "Recruiter", "ServiceProvider", "Enquiry", "Candidate Job"];
 
   const filteredContacts = contacts.filter(c => {
     let matchesRole = true;
@@ -83,7 +83,10 @@ export default function ContactManagementPage() {
     link.click();
   };
 
+  const [selectedEnquiry, setSelectedEnquiry] = useState(null);
+
   const getRoleIcon = (role) => {
+    if (role === "Enquiry") return <Mail size={14} />;
     if (role.includes("Candidate Job")) return <Globe size={14} />;
     switch (role) {
       case "Recruiter": return <Briefcase size={14} />;
@@ -127,12 +130,13 @@ export default function ContactManagementPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
           <StatCard label="Total Unique" value={contacts.length} color="bg-indigo-50 text-indigo-600" icon={<Database size={20} />} />
+          <StatCard label="Enquiries" value={contacts.filter(c => c.role === "Enquiry").length} color="bg-rose-50 text-rose-600" icon={<Mail size={20} />} />
           <StatCard label="Recruiters" value={contacts.filter(c => c.role === "Recruiter").length} color="bg-blue-50 text-blue-600" icon={<Briefcase size={20} />} />
           <StatCard label="Service Providers" value={contacts.filter(c => c.role === "ServiceProvider").length} color="bg-emerald-50 text-emerald-600" icon={<Wrench size={20} />} />
           <StatCard label="Candidates" value={contacts.filter(c => c.role === "Candidate").length} color="bg-amber-50 text-amber-600" icon={<User size={20} />} />
-          <StatCard label="Job Post Contacts" value={contacts.filter(c => c.role.includes("Candidate Job")).length} color="bg-rose-50 text-rose-600" icon={<Globe size={20} />} />
+          <StatCard label="Job Posts" value={contacts.filter(c => c.role.includes("Candidate Job")).length} color="bg-slate-50 text-slate-600" icon={<Globe size={20} />} />
         </div>
 
 
@@ -212,7 +216,8 @@ export default function ContactManagementPage() {
                             contact.role === 'Recruiter' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                             contact.role === 'ServiceProvider' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                             contact.role === 'Candidate' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                            contact.role.includes('Candidate Job') ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                            contact.role === 'Enquiry' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                            contact.role.includes('Candidate Job') ? 'bg-slate-100 text-slate-600 border-slate-200' :
                             'bg-slate-50 text-slate-500 border-slate-200'
                           }`}>
                             {getRoleIcon(contact.role)} {contact.role}
@@ -236,19 +241,26 @@ export default function ContactManagementPage() {
                       </td>
                       <td className="px-6 py-5 text-right">
                         <div className="flex items-center justify-end gap-2">
-                           {contact.email !== 'N/A' && (
-                             <a href={`mailto:${contact.email}`} className="p-2 bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="Send Email">
+                           {contact.role === "Enquiry" ? (
+                             <button 
+                               onClick={() => setSelectedEnquiry(contact)}
+                               className="p-2 bg-rose-50 text-rose-600 rounded-lg transition-all hover:bg-rose-100 shadow-sm" 
+                               title="View Message"
+                             >
                                <Mail size={16} />
-                             </a>
+                             </button>
+                           ) : (
+                             <>
+                               {contact.email !== 'N/A' && (
+                                 <a href={`mailto:${contact.email}`} className="p-2 bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="Send Email">
+                                   <Mail size={16} />
+                                 </a>
+                               )}
+                               <button className="p-2 bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
+                                 <ExternalLink size={16} />
+                               </button>
+                             </>
                            )}
-                           {contact.phone !== 'N/A' && (
-                             <a href={`tel:${contact.phone}`} className="p-2 bg-slate-50 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Call">
-                               <Phone size={16} />
-                             </a>
-                           )}
-                           <button className="p-2 bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
-                             <ExternalLink size={16} />
-                           </button>
                         </div>
                       </td>
                     </tr>
@@ -304,6 +316,56 @@ export default function ContactManagementPage() {
           )}
         </div>
       </div>
+
+      {/* Enquiry Modal */}
+      {selectedEnquiry && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+           <div className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-rose-50/30">
+                 <div className="flex items-center gap-3">
+                    <div className="p-3 bg-rose-500 text-white rounded-2xl shadow-lg shadow-rose-100">
+                       <Mail size={20} />
+                    </div>
+                    <div>
+                       <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Contact Enquiry</h3>
+                       <p className="text-rose-600 text-[10px] font-black uppercase tracking-widest">Incoming Message</p>
+                    </div>
+                 </div>
+                 <button onClick={() => setSelectedEnquiry(null)} className="p-2 hover:bg-white rounded-full text-slate-400 transition-all">
+                    <RefreshCw size={20} className="rotate-45" />
+                 </button>
+              </div>
+              <div className="p-8 space-y-6">
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-slate-50 rounded-2xl">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">From</p>
+                       <p className="font-bold text-slate-900">{selectedEnquiry.name}</p>
+                    </div>
+                    <div className="p-4 bg-slate-50 rounded-2xl">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Date</p>
+                       <p className="font-bold text-slate-900">{new Date(selectedEnquiry.createdAt).toLocaleDateString()}</p>
+                    </div>
+                 </div>
+                 <div className="p-4 bg-slate-50 rounded-2xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Subject</p>
+                    <p className="font-bold text-slate-900">{selectedEnquiry.details?.subject || "No Subject"}</p>
+                 </div>
+                 <div className="p-6 bg-slate-900 rounded-[30px] text-slate-200">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Message Body</p>
+                    <p className="text-sm font-medium leading-relaxed italic">"{selectedEnquiry.details?.message}"</p>
+                 </div>
+              </div>
+              <div className="p-8 pt-0">
+                 <button 
+                   onClick={() => setSelectedEnquiry(null)}
+                   className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all"
+                 >
+                    Close Message
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 }

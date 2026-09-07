@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { 
   FileText, Sparkles, UserSquare, BarChart3, 
@@ -9,6 +9,15 @@ import {
 export default function ResumeToolkit() {
   const [tab, setTab] = useState("tailor");
   const { data: session } = useSession();
+
+  // Load target tab from URL query params (e.g. ?tab=headshot)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const t = params.get("tab");
+      if (t) setTab(t);
+    }
+  }, []);
   
   // Common states
   const [loading, setLoading] = useState(false);
@@ -25,6 +34,9 @@ export default function ResumeToolkit() {
 
   // Headshot States
   const [selfieFile, setSelfieFile] = useState(null);
+  const [selfiePreview, setSelfiePreview] = useState("");
+  const [headshotStyle, setHeadshotStyle] = useState("corporate");
+  const [generatedHeadshot, setGeneratedHeadshot] = useState("");
   const [headshotResults, setHeadshotResults] = useState([]);
   const [selectedHeadshot, setSelectedHeadshot] = useState(null);
 
@@ -38,6 +50,14 @@ export default function ResumeToolkit() {
   const atsInputRef = useRef();
 
   // ------------------ Helpers ------------------
+  async function getBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+    });
+  }
   async function extractTextFromFile(file) {
     if (!file) return "";
     const ext = file.name.split(".").pop().toLowerCase();
@@ -115,6 +135,31 @@ export default function ResumeToolkit() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
       setAtsResult(data.data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateHeadshot = async (e) => {
+    if (e) e.preventDefault();
+    if (!selfiePreview) return setError("Please upload a selfie first.");
+    setLoading(true);
+    setError(null);
+    setGeneratedHeadshot("");
+    try {
+      const res = await fetch("/api/ai/generate-headshot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: selfiePreview,
+          style: headshotStyle
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "Failed to generate headshot");
+      setGeneratedHeadshot(data.imageUrl);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -221,12 +266,61 @@ export default function ResumeToolkit() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-4 text-center">
-                  <input type="file" ref={selfieInputRef} onChange={(e) => setSelfieFile(e.target.files[0])} className="hidden" id="selfie" />
-                  <label htmlFor="selfie" className="block p-10 border-2 border-dashed rounded-[40px] cursor-pointer hover:bg-slate-50">
-                    {selfieFile ? <p className="text-indigo-600 font-bold">{selfieFile.name}</p> : <p className="text-slate-400">Click to upload selfie</p>}
+                <div className="space-y-6 text-center">
+                  <input 
+                    type="file" 
+                    ref={selfieInputRef} 
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const f = e.target.files[0];
+                      if (f) {
+                        setSelfieFile(f);
+                        const b64 = await getBase64(f);
+                        setSelfiePreview(b64);
+                      }
+                    }} 
+                    className="hidden" 
+                    id="selfie" 
+                  />
+                  <label htmlFor="selfie" className="block p-8 border-2 border-dashed rounded-[32px] cursor-pointer hover:bg-slate-50 bg-slate-50/50 transition-all">
+                    {selfiePreview ? (
+                      <div className="space-y-2">
+                        <img src={selfiePreview} alt="Selfie Preview" className="w-32 h-32 object-cover rounded-full mx-auto border-4 border-white shadow-md" />
+                        <p className="text-xs font-black text-indigo-600 mt-2">Change Selfie</p>
+                      </div>
+                    ) : (
+                      <div className="py-6">
+                        <Upload className="mx-auto text-slate-300 mb-2" />
+                        <p className="text-sm font-bold text-slate-600">Click to upload selfie</p>
+                        <p className="text-[10px] text-slate-400 mt-1">Make sure your face is clearly visible</p>
+                      </div>
+                    )}
                   </label>
-                  <button className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black">Generate Headshot</button>
+
+                  <div className="text-left">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Target Style</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['Corporate', 'Tech CEO', 'Formal'].map(style => (
+                        <button 
+                          key={style} 
+                          type="button"
+                          onClick={() => setHeadshotStyle(style.toLowerCase())} 
+                          className={`py-3 rounded-xl text-[10px] font-bold border transition-all ${headshotStyle === style.toLowerCase() ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100' : 'bg-white text-slate-600 border-slate-100'}`}
+                        >
+                          {style}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={handleGenerateHeadshot}
+                    disabled={loading || !selfiePreview}
+                    className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 disabled:opacity-50"
+                  >
+                    {loading ? <RefreshCw className="animate-spin" /> : <Sparkles size={20} />}
+                    {loading ? "Generating portrait..." : "Generate Headshot"}
+                  </button>
                 </div>
               )}
             </div>
@@ -250,6 +344,40 @@ export default function ResumeToolkit() {
               <div className="flex flex-col items-center justify-center h-full py-20">
                 <RefreshCw className="animate-spin text-indigo-600 mb-4" size={32} />
                 <p className="text-slate-500 font-bold animate-pulse">Analyzing your profile...</p>
+              </div>
+            ) : tab === 'headshot' ? (
+              /* --- AI Headshots Result View --- */
+              <div className="flex flex-col items-center justify-center h-full min-h-[350px] space-y-6 animate-in fade-in duration-500">
+                {generatedHeadshot ? (
+                  <div className="text-center space-y-5">
+                    <img 
+                      src={generatedHeadshot} 
+                      alt="AI Professional Headshot" 
+                      className="w-64 h-64 object-cover rounded-[32px] border-4 border-white shadow-2xl mx-auto animate-in zoom-in duration-500" 
+                    />
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Target Style</p>
+                      <p className="text-sm font-black text-slate-800 capitalize mt-1">{headshotStyle}</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        const a = document.createElement("a");
+                        a.href = generatedHeadshot;
+                        a.download = `headshot-${headshotStyle}.jpg`;
+                        a.click();
+                      }}
+                      className="inline-flex items-center gap-2 px-6 py-3.5 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95"
+                    >
+                      <Download size={16} /> Download Headshot
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-20 text-slate-400 italic">
+                    <UserSquare size={48} className="mb-4 opacity-20" />
+                    <p className="text-sm font-bold text-slate-500">Awaiting input</p>
+                    <p className="text-xs text-slate-400 mt-1 max-w-[200px] text-center">Upload your selfie and select a style on the left.</p>
+                  </div>
+                )}
               </div>
             ) : tab === 'ats' && atsResult ? (
               /* --- ATS Result Professional View --- */

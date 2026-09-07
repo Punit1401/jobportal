@@ -1,8 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { CheckCircle2, XCircle, Lightbulb, Loader2, BarChart3, Sparkles } from "lucide-react";
+import { CheckCircle2, XCircle, Lightbulb, Loader2, BarChart3, Sparkles, Map, PlayCircle, Award, Zap, Star } from "lucide-react";
 import UserSidebar from '@/components/UserSidebar';
 import { useSession } from "next-auth/react";
+import FeatureGuard from "@/components/FeatureGuard";
 
 export default function SkillGapPage() {
   const { data: session } = useSession();
@@ -84,11 +85,12 @@ export default function SkillGapPage() {
       <UserSidebar activePage="skill-analysis" />
 
       <main className="flex-1 w-full p-4 sm:p-8 lg:p-12 mt-16 md:mt-0">
-        <div className="max-w-4xl mx-auto">
+        <FeatureGuard featureName="Learning Features">
+          <div className="max-w-4xl mx-auto">
           <div className="mb-10">
-            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
               Skill Gap Analysis
-            </h1>
+            </h2>
             <p className="text-slate-500 font-medium mt-2">
               Our AI evaluates your profile against the job requirements to help you improve.
             </p>
@@ -100,7 +102,7 @@ export default function SkillGapPage() {
                 <label className="block text-slate-700 font-bold mb-3 uppercase tracking-widest text-sm">
                   Target Job Description
                 </label>
-                <textarea 
+                <textarea
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
                   placeholder="Paste the requirements or job description of the role you want to apply for..."
@@ -192,12 +194,66 @@ export default function SkillGapPage() {
                     <Lightbulb className="text-white" size={28} />
                   </div>
                   <div className="relative z-10">
-                    <h4 className="font-black text-white text-lg uppercase tracking-tight mb-2">AI Roadmap & Advice</h4>
+                    <h4 className="font-black text-white text-lg uppercase tracking-tight mb-2">Expert Advice</h4>
                     <p className="text-indigo-50 leading-relaxed font-medium">
                       {analysis.recommendation}
                     </p>
                   </div>
                 </div>
+
+                {/* Personalized Learning Roadmap */}
+                {analysis.roadmap && (
+                  <div className="space-y-6">
+                    <h3 className="text-xl font-black text-slate-800 px-4 flex items-center gap-2">
+                      <Star className="text-indigo-500" /> Personalized Roadmap
+                    </h3>
+                    <div className="space-y-4">
+                      {analysis.roadmap.map((step, idx) => (
+                        <div key={idx} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex gap-6 relative overflow-hidden group">
+                          <div className="h-full w-1.5 bg-indigo-100 absolute left-0 top-0 group-hover:bg-indigo-500 transition-all"></div>
+                          <div className="flex-shrink-0 w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black text-lg">
+                            {idx + 1}
+                          </div>
+                          <div className="space-y-2">
+                            <h4 className="text-lg font-black text-slate-800">{step.topic}</h4>
+                            <p className="text-sm text-slate-500 leading-relaxed font-medium">{step.description}</p>
+                            <div className="flex flex-wrap gap-2 mt-4">
+                              {(step.resources || []).map((res, i) => (
+                                <span key={i} className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black flex items-center gap-1">
+                                  <PlayCircle size={12} /> {res}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recommended Certifications */}
+                {analysis.certifications && (
+                  <div className="bg-indigo-900 rounded-[3rem] p-8 md:p-12 text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+                    <h3 className="text-2xl font-black mb-8 flex items-center gap-3 relative z-10">
+                      <Award className="text-amber-400" size={32} /> Industry Certifications
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                      {analysis.certifications.map((cert, i) => (
+                        <div key={i} className="bg-white/10 p-6 rounded-[2rem] border border-white/10 hover:bg-white/20 transition-all group">
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="bg-amber-400/20 p-3 rounded-2xl group-hover:bg-amber-400/30 transition-all">
+                              <Award className="text-amber-400" size={20} />
+                            </div>
+                            <span className="text-[10px] font-black px-3 py-1 bg-amber-400 text-slate-900 rounded-full uppercase tracking-tighter">{cert.importance}</span>
+                          </div>
+                          <h4 className="font-black text-lg mb-1">{cert.name}</h4>
+                          <p className="text-xs text-indigo-300 font-bold uppercase tracking-widest">{cert.provider}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="pt-4 flex justify-center">
                   <button onClick={() => setAnalysis(null)} className="text-slate-400 font-bold text-xs uppercase tracking-widest hover:text-indigo-600 transition-all">
@@ -212,7 +268,8 @@ export default function SkillGapPage() {
               </div>
             )}
           </div>
-        </div>
+          </div>
+        </FeatureGuard>
       </main>
     </div>
   );

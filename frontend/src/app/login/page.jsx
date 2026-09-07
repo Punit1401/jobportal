@@ -187,18 +187,35 @@
 // }
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // ✅ જો યુઝર પહેલેથી લોગિન હોય, તો તેને ડેશબોર્ડ પર મોકલી દેવો
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.role) {
+      const role = session.user.role;
+      let targetPath = "/user/dashboard";
+      
+      if (role === "admin" || role === "staff") targetPath = "/admin/dashboard";
+      else if (role === "recruiter") targetPath = "/recruiter/dashboard";
+      else if (role === "serviceprovider") targetPath = "/serviceprovider/dashboard";
+      else if (role === "user" || role === "candidate") targetPath = "/user/dashboard";
+      
+      // હાર્ડ રિડાયરેક્ટ (Cookies સિંક કરવા માટે)
+      window.location.href = targetPath;
+    }
+  }, [session, status]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -206,7 +223,41 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // 1. NextAuth સાથે લોગિન (redirect: false રાખીએ છીએ જેથી રોલ ચેક કરી શકીએ)
+      // ✅ New Redirection Logic (Proper Fix)
+      const roleRes = await fetch("/api/auth/role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.toLowerCase().trim() }),
+      });
+
+      let role = "user"; // Default
+      if (roleRes.ok) {
+        const data = await roleRes.json();
+        role = data.role;
+      }
+
+      let targetPath = "/user/dashboard";
+      if (role === "admin" || role === "staff") targetPath = "/admin/dashboard";
+      else if (role === "recruiter") targetPath = "/recruiter/dashboard";
+      else if (role === "serviceprovider") targetPath = "/serviceprovider/dashboard";
+      else if (role === "user" || role === "candidate") targetPath = "/user/dashboard";
+
+      const res = await signIn("credentials", {
+        redirect: false,
+        email: email.toLowerCase().trim(),
+        password,
+      });
+
+      if (res?.ok) {
+        // ✅ સફળ લોગિન પછી મેન્યુઅલ રિડાયરેક્ટ
+        window.location.href = targetPath;
+      } else {
+        setError(res?.error || "Invalid credentials");
+        setLoading(false);
+      }
+
+      /* 
+      // --- Old Code Commented Out ---
       const res = await signIn("credentials", {
         redirect: false,
         email: email.toLowerCase().trim(),
@@ -225,7 +276,6 @@ export default function LoginPage() {
         return;
       }
 
-      // 2. સેશન ફેચ કરીને રોલ ચેક કરવો
       const sessionRes = await fetch("/api/auth/session");
       const session = await sessionRes.json();
 
@@ -236,10 +286,9 @@ export default function LoginPage() {
       }
 
       const role = session.user.role;
-      let targetPath = "/user/dashboard"; // Default Path
+      let targetPath = "/user/dashboard"; 
 
-      // 3. રોલ વાઈઝ ટાર્ગેટ પાથ નક્કી કરવો
-      if (role === "admin") {
+      if (role === "admin" || role === "staff") {
         targetPath = "/admin/dashboard";
       } else if (role === "recruiter") {
         try {
@@ -254,9 +303,8 @@ export default function LoginPage() {
         targetPath = "/user/dashboard";
       }
 
-      // 4. લાઈવ સર્વર માટે હાર્ડ રિડાયરેક્ટ (window.location.href)
-      // આનાથી Middleware અને Cookies બરાબર સિંક થઈ જશે
       window.location.href = targetPath;
+      */
 
     } catch (err) {
       console.error("Login Error:", err);

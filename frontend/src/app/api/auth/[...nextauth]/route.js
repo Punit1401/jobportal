@@ -274,7 +274,7 @@ export const authOptions = {
                   id: dbUser._id.toString(),
                   name: dbUser.name || dbUser.fullName || "User",
                   email: dbUser.email,
-                  role: item.role,
+                  role: dbUser.role || item.role,
                 };
               }
             }

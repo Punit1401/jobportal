@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Folder, File, Upload, Plus, Trash2, Download, Search, 
   ChevronRight, HardDrive, Loader2, FileText, Image as ImageIcon,
-  MoreVertical, X
+  MoreVertical, X, Eye, ExternalLink
 } from "lucide-react";
 import UserSidebar from '@/components/UserSidebar';
 
@@ -24,6 +24,7 @@ export default function FilesFoldersPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [previewFile, setPreviewFile] = useState(null);
   
   const fileInputRef = useRef(null);
 
@@ -99,7 +100,7 @@ export default function FilesFoldersPage() {
     if (!file) return;
 
     if (totalSize + file.size > maxStorage) {
-      alert("Storage limit exceeded! You can only store up to 50MB.");
+      alert(`Storage limit exceeded! You can only store up to ${formatBytes(maxStorage)}.`);
       return;
     }
 
@@ -184,7 +185,7 @@ export default function FilesFoldersPage() {
           <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 w-full md:w-72">
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1.5"><HardDrive size={14}/> Storage</span>
-              <span className="text-xs font-black text-indigo-600">{formatBytes(totalSize)} / 50 MB</span>
+              <span className="text-xs font-black text-indigo-600">{formatBytes(totalSize)} / {formatBytes(maxStorage)}</span>
             </div>
             <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
               <div 
@@ -286,22 +287,43 @@ export default function FilesFoldersPage() {
               {/* Files */}
               {items.map(file => (
                 <div key={file._id} className="group bg-white border border-slate-100 hover:border-indigo-200 p-5 rounded-2xl flex flex-col justify-between transition-all shadow-sm hover:shadow-md relative overflow-hidden">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-3 bg-slate-50 rounded-xl group-hover:bg-indigo-50 transition-colors">
-                      {getFileIcon(file.name)}
-                    </div>
-                    <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                      <a href={file.url} download target="_blank" rel="noreferrer" className="p-2 text-slate-400 hover:text-indigo-600 rounded-lg">
-                        <Download size={16} />
-                      </a>
-                      <button onClick={() => handleDelete(file._id, file.size)} className="p-2 text-slate-400 hover:text-rose-500 rounded-lg">
+                  <div>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="p-3 bg-slate-50 rounded-xl group-hover:bg-indigo-50 transition-colors">
+                        {getFileIcon(file.name)}
+                      </div>
+                      <button 
+                        onClick={() => handleDelete(file._id, file.size)} 
+                        className="p-1.5 text-slate-300 hover:text-rose-500 rounded-lg transition-colors"
+                        title="Delete File"
+                      >
                         <Trash2 size={16} />
                       </button>
                     </div>
-                  </div>
-                  <div>
+                    
                     <h4 className="font-bold text-sm text-slate-800 truncate mb-1" title={file.name}>{file.name}</h4>
-                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">{formatBytes(file.size)}</p>
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-4">{formatBytes(file.size)}</p>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => setPreviewFile(file)}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl font-bold text-xs transition-colors"
+                      title="View File"
+                    >
+                      <Eye size={14} /> View
+                    </button>
+
+                    <a 
+                      href={file.url} 
+                      download={file.name} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-colors"
+                      title="Download File"
+                    >
+                      <Download size={14} /> Download
+                    </a>
                   </div>
                 </div>
               ))}
@@ -341,6 +363,78 @@ export default function FilesFoldersPage() {
                   Create
                 </button>
               </form>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* File Preview Modal */}
+      <AnimatePresence>
+        {previewFile && (
+          <>
+            <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 bg-slate-900/75 backdrop-blur-md z-[200]" onClick={() => setPreviewFile(null)} />
+            <motion.div 
+              initial={{opacity:0, scale:0.95}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.95}} 
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl bg-white p-6 sm:p-8 rounded-[2rem] shadow-2xl z-[201] max-h-[90vh] flex flex-col justify-between"
+            >
+              <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  {getFileIcon(previewFile.name)}
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900 truncate max-w-md">{previewFile.name}</h3>
+                    <p className="text-xs font-bold text-slate-400">{formatBytes(previewFile.size)}</p>
+                  </div>
+                </div>
+                <button onClick={() => setPreviewFile(null)} className="text-slate-400 hover:text-slate-600 p-2"><X size={20}/></button>
+              </div>
+
+              {/* Preview Content */}
+              <div className="flex-1 overflow-y-auto min-h-[350px] flex items-center justify-center bg-slate-50 rounded-2xl p-4 my-2 border border-slate-100">
+                {['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].some(ext => previewFile.name.toLowerCase().endsWith(ext)) ? (
+                  <img src={previewFile.url} alt={previewFile.name} className="max-h-[60vh] max-w-full object-contain rounded-xl shadow-sm" />
+                ) : ['pdf'].some(ext => previewFile.name.toLowerCase().endsWith(ext)) ? (
+                  <iframe src={previewFile.url} title={previewFile.name} className="w-full h-[60vh] rounded-xl border-none bg-white" />
+                ) : ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].some(ext => previewFile.name.toLowerCase().endsWith(ext)) ? (
+                  <iframe 
+                    src={`https://docs.google.com/gview?url=${encodeURIComponent(
+                      typeof window !== 'undefined' ? (previewFile.url.startsWith('http') ? previewFile.url : `${window.location.origin}${previewFile.url}`) : previewFile.url
+                    )}&embedded=true`} 
+                    title={previewFile.name} 
+                    className="w-full h-[60vh] rounded-xl border-none bg-white" 
+                  />
+                ) : (
+                  <div className="text-center p-8">
+                    <FileText size={56} className="text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-600 font-bold mb-2">Direct browser inline preview unavailable.</p>
+                    <p className="text-xs text-slate-400">Use Open in New Tab or Download to view this file.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <a 
+                  href={
+                    ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].some(ext => previewFile.name.toLowerCase().endsWith(ext))
+                      ? `https://docs.google.com/gview?url=${encodeURIComponent(
+                          typeof window !== 'undefined' ? (previewFile.url.startsWith('http') ? previewFile.url : `${window.location.origin}${previewFile.url}`) : previewFile.url
+                        )}`
+                      : previewFile.url
+                  } 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="flex items-center gap-2 px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-colors"
+                >
+                  <ExternalLink size={16} /> Open in New Tab
+                </a>
+                <a 
+                  href={previewFile.url} 
+                  download={previewFile.name}
+                  className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs transition-colors shadow-lg shadow-indigo-100"
+                >
+                  <Download size={16} /> Download File
+                </a>
+              </div>
             </motion.div>
           </>
         )}

@@ -1,17 +1,101 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Serviceprovidersidbar from '@/components/Serviceprovidersidbar.jsx';
-import { ShoppingBag, Search, Filter, Star, ShoppingCart, ArrowRight, Heart, Tag, ShieldCheck, Box, Zap, Loader2, Sparkles, Plus } from 'lucide-react';
+import { ShoppingBag, Zap, Users, Plus, Star, CheckCircle2, TrendingUp, Sparkles, Loader2, Box } from 'lucide-react';
 
 export default function RetailPurchasePage() {
-    const products = [
-        { id: 1, name: "HD Conference Camera", category: "Hardware", price: "₹ 12,500", rating: 4.8, img: "📷" },
-        { id: 2, name: "Premium Podcast Mic", category: "Audio", price: "₹ 8,200", rating: 4.9, img: "🎙️" },
-        { id: 3, name: "LED Studio Lighting Kit", category: "Hardware", price: "₹ 5,400", rating: 4.7, img: "💡" },
-        { id: 4, name: "Expert Course Template", category: "Digital", price: "₹ 2,999", rating: 4.9, img: "📚" },
-        { id: 5, name: "Pro Service Contract Pack", category: "Legal", price: "₹ 1,500", rating: 4.6, img: "📄" },
-        { id: 6, name: "High-Speed SSD 1TB", category: "Hardware", price: "₹ 6,800", rating: 4.8, img: "💾" },
+    const [purchases, setPurchases] = useState([]);
+    const [walletBalance, setWalletBalance] = useState(0);
+    const [subscriptionPlans, setSubscriptionPlans] = useState([]);
+    const [storagePlans, setStoragePlans] = useState([]);
+    const [adPlans, setAdPlans] = useState([]);
+    const [services, setServices] = useState([]);
+    const [selectedServiceIds, setSelectedServiceIds] = useState({});
+    const [activeCategory, setActiveCategory] = useState("All Items");
+    const [loading, setLoading] = useState(true);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            // Fetch Transactions/Purchases history (using the generic wallet endpoint)
+            const res = await fetch('/api/user/wallet');
+            const data = await res.json();
+            if (data.success) {
+                setWalletBalance(data.balance);
+                setPurchases(data.transactions || []);
+            }
+
+            // Fetch Subscription Plans for service providers
+            const subRes = await fetch('/api/serviceprovider/subscriptions');
+            const subData = await subRes.json();
+            if (subData.ok) setSubscriptionPlans(subData.plans || []);
+
+            // Fetch Storage Plans
+            const storageRes = await fetch('/api/storage-plans');
+            const storageData = await storageRes.json();
+            if (storageData.success) setStoragePlans(storageData.plans || []);
+
+            // Fetch Ad Plans
+            const adRes = await fetch('/api/ad-plans');
+            const adData = await adRes.json();
+            if (adData.success) setAdPlans(adData.plans || []);
+
+            // Fetch Service Provider Services
+            const servicesRes = await fetch('/api/serviceprovider/serviceform');
+            const servicesData = await servicesRes.json();
+            if (servicesData.success) setServices(servicesData.services || []);
+        } catch (error) {
+            console.error("Fetch SP Retail Error:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const handlePurchase = async (item) => {
+        try {
+            let payload = { type: item.type, planId: item._id };
+            
+            if (item.type === 'advertising') {
+                const serviceId = selectedServiceIds[item._id];
+                if (!serviceId) {
+                    alert("Please select a service to promote first.");
+                    return;
+                }
+                payload.serviceId = serviceId;
+            }
+
+            const res = await fetch('/api/wallet/purchase', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`Successfully purchased ${item.title || item.name}!`);
+                fetchData(); // Reload wallet balance and transactions
+            } else {
+                alert("Error: " + (data.error || "Could not complete purchase."));
+            }
+        } catch (error) {
+            alert("Connection error.");
+        }
+    };
+
+    // Grouping all retrieved plans under unified format
+    const allItems = [
+        ...subscriptionPlans.map(p => ({ ...p, type: 'subscription', priceLabel: `₹${p.price}`, icon: <Star size={24} />, color: "bg-rose-50", text: "text-rose-600", categoryName: "Subscription Plans" })),
+        ...storagePlans.map(p => ({ ...p, type: 'storage', priceLabel: `₹${p.price}`, icon: <Box size={24} />, color: "bg-indigo-50", text: "text-indigo-600", categoryName: "Storage Plans" })),
+        ...adPlans.map(p => ({ ...p, type: 'advertising', priceLabel: `₹${p.price}`, icon: <Zap size={24} />, color: "bg-amber-50", text: "text-amber-600", categoryName: "Advertisement Plans" })),
     ];
+
+    const categories = ["All Items", "Subscription Plans", "Storage Plans", "Advertisement Plans"];
+    const filteredItems = activeCategory === "All Items" 
+        ? allItems 
+        : allItems.filter(item => item.categoryName === activeCategory);
 
     return (
         <div className="flex h-screen bg-[#FDFEFF] overflow-hidden">
@@ -23,92 +107,108 @@ export default function RetailPurchasePage() {
                     {/* Header */}
                     <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                         <div>
-                            <h1 className="text-4xl font-black text-slate-900 tracking-tight">Expert Marketplace</h1>
-                            <p className="text-slate-500 font-medium mt-1">Professional equipment and digital assets to upgrade your service quality.</p>
+                            <h1 className="text-4xl font-black text-slate-900 tracking-tight">Marketplace Purchases</h1>
+                            <p className="text-slate-505 font-medium mt-1">Upgrade your space, run targeted service ads, and sign up for premium provider plans.</p>
                         </div>
-                        <div className="flex gap-4">
-                            <button className="relative p-4 bg-white border border-slate-100 rounded-2xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm">
-                                <ShoppingCart size={24} />
-                                <span className="absolute top-2 right-2 w-5 h-5 bg-indigo-600 text-white text-[10px] font-black rounded-full flex items-center justify-center">0</span>
-                            </button>
+                        <div className="flex items-center gap-4 bg-white px-6 py-3 rounded-2xl border border-slate-100 shadow-sm">
+                            <ShoppingBag className="text-indigo-600" size={20} />
+                            <div className="text-right">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Wallet Balance</p>
+                                <p className="text-lg font-black text-slate-900">₹{walletBalance.toLocaleString()}</p>
+                            </div>
                         </div>
                     </header>
 
-                    {/* Promo Banner */}
-                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-[50px] p-10 md:p-16 text-white relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-white/10 rounded-full blur-[100px] -mr-40 -mt-40"></div>
-                        <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-                            <div className="space-y-6">
-                                <div className="inline-flex items-center gap-2 bg-white/20 px-6 py-2 rounded-full border border-white/10 backdrop-blur-md">
-                                    <Tag size={16} className="text-amber-300" />
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Exclusive Partner Discount</span>
-                                </div>
-                                <h3 className="text-4xl md:text-5xl font-black tracking-tighter leading-tight">Upgrade your studio. <br /> Get 20% Off.</h3>
-                                <p className="text-indigo-100 font-medium text-lg opacity-80">Redeem your service provider points for exclusive hardware and digital tools.</p>
-                                <button className="bg-white text-indigo-600 px-10 py-5 rounded-[24px] font-black hover:scale-105 transition-all shadow-2xl">Claim Offer Now</button>
-                            </div>
-                            <div className="hidden md:flex justify-center relative">
-                                 <div className="w-64 h-64 bg-white/10 rounded-[60px] flex items-center justify-center text-8xl backdrop-blur-sm border border-white/20 rotate-12 animate-float">🎙️</div>
-                                 <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-white/20 rounded-[40px] flex items-center justify-center text-6xl backdrop-blur-sm border border-white/20 -rotate-12 animate-float-delayed">📷</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Filters & Search */}
-                    <div className="flex flex-col md:flex-row gap-6">
-                         <div className="flex-1 relative">
-                             <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
-                             <input type="text" placeholder="Search equipment, templates, and more..." className="w-full pl-14 pr-6 py-5 rounded-[28px] bg-white border border-slate-100 shadow-sm outline-none focus:ring-2 focus:ring-indigo-600 font-bold transition-all" />
-                         </div>
-                         <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
-                             {["All Items", "Hardware", "Digital", "Legal", "Software"].map((cat, i) => (
-                                 <button key={i} className={`px-8 py-5 rounded-[24px] font-black text-xs uppercase tracking-widest whitespace-nowrap transition-all ${i === 0 ? 'bg-slate-900 text-white shadow-xl shadow-slate-200' : 'bg-white text-slate-400 border border-slate-100 hover:border-indigo-600'}`}>{cat}</button>
-                             ))}
-                         </div>
-                    </div>
-
-                    {/* Products Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-                        {products.map((product) => (
-                            <div key={product.id} className="bg-white rounded-[50px] p-4 border border-slate-100 shadow-sm hover:shadow-2xl transition-all group overflow-hidden flex flex-col">
-                                <div className="bg-slate-50 rounded-[40px] aspect-square flex items-center justify-center text-8xl relative overflow-hidden group-hover:bg-slate-100 transition-colors">
-                                    <div className="absolute top-6 right-6 p-3 bg-white/80 backdrop-blur-md rounded-2xl text-slate-300 hover:text-rose-500 transition-all cursor-pointer opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0"><Heart size={20} /></div>
-                                    <span className="group-hover:scale-110 transition-transform duration-500">{product.img}</span>
-                                </div>
-                                <div className="p-8 space-y-6 flex-1 flex flex-col">
-                                    <div>
-                                        <div className="flex justify-between items-start mb-2">
-                                            <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">{product.category}</span>
-                                            <div className="flex items-center gap-1 text-amber-500 text-xs font-black">
-                                                <Star size={12} fill="currentColor" /> {product.rating}
-                                            </div>
-                                        </div>
-                                        <h4 className="text-2xl font-black text-slate-900 leading-tight truncate">{product.name}</h4>
-                                    </div>
-                                    <div className="mt-auto flex items-center justify-between gap-4">
-                                        <span className="text-3xl font-black text-slate-900 tracking-tighter">{product.price}</span>
-                                        <button className="w-14 h-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center hover:bg-indigo-600 transition-all shadow-xl shadow-slate-100"><Plus size={24} /></button>
-                                    </div>
-                                </div>
-                            </div>
+                    {/* Filter/Categories */}
+                    <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+                        {categories.map((cat, i) => (
+                            <button 
+                                key={i} 
+                                onClick={() => setActiveCategory(cat)}
+                                className={`px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest whitespace-nowrap transition-all ${activeCategory === cat ? 'bg-slate-900 text-white shadow-xl shadow-slate-200' : 'bg-white text-slate-500 border border-slate-100 hover:bg-slate-50'}`}
+                            >
+                                {cat}
+                            </button>
                         ))}
                     </div>
 
-                    {/* Trust Banner */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-10">
-                        <div className="bg-emerald-50/50 p-8 rounded-[40px] border border-emerald-100 flex items-center gap-6">
-                            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-emerald-600 shadow-lg shadow-emerald-200/50"><ShieldCheck size={32} /></div>
-                            <div><h5 className="font-black text-slate-900 text-lg">Verified Goods</h5><p className="text-slate-500 text-xs font-medium">Quality tested for professionals.</p></div>
+                    {/* Items Grid */}
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center py-40 gap-4">
+                            <Loader2 className="animate-spin text-indigo-600" size={40} />
+                            <p className="text-slate-400 font-bold">Loading plans...</p>
                         </div>
-                        <div className="bg-indigo-50/50 p-8 rounded-[40px] border border-indigo-100 flex items-center gap-6">
-                            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-indigo-600 shadow-lg shadow-indigo-200/50"><Zap size={32} /></div>
-                            <div><h5 className="font-black text-slate-900 text-lg">Instant Asset Access</h5><p className="text-slate-500 text-xs font-medium">Immediate digital downloads.</p></div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                            {filteredItems.map(item => (
+                                <div key={item._id} className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm hover:shadow-2xl transition-all group flex flex-col justify-between overflow-hidden relative">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 group-hover:bg-indigo-50 transition-all"></div>
+                                    <div className="relative z-10 flex-1 flex flex-col justify-between">
+                                        <div>
+                                            <div className={`w-14 h-14 ${item.color} ${item.text} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                                                {item.icon}
+                                            </div>
+                                            <h3 className="text-xl font-black text-slate-900 mb-2">{item.title}</h3>
+                                            <p className="text-slate-400 font-medium text-xs mb-6 leading-relaxed">
+                                                {item.type === 'subscription' && (item.description || `${item.duration} ${item.durationType} validity.`)}
+                                                {item.type === 'storage' && `${item.addedSpaceMB} MB additional storage space.`}
+                                                {item.type === 'advertising' && (item.description || `Advertise for ${item.duration} ${item.durationType} (${item.estimatedImpressions?.toLocaleString() || 0} est. impressions).`)}
+                                            </p>
+                                            
+                                            {/* Dynamic Features List if present */}
+                                            {item.features && item.features.length > 0 && (
+                                                <ul className="mb-6 space-y-2">
+                                                    {item.features.map((feature, idx) => (
+                                                        <li key={idx} className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
+                                                            <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                                                            <span>{feature}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+
+                                            {item.type === 'advertising' && (
+                                                <div className="mt-4 mb-6">
+                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Select Service to Promote</label>
+                                                    <select 
+                                                        value={selectedServiceIds[item._id] || ""}
+                                                        onChange={(e) => setSelectedServiceIds({ ...selectedServiceIds, [item._id]: e.target.value })}
+                                                        className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-700 text-xs transition-all"
+                                                    >
+                                                        <option value="">Choose a service...</option>
+                                                        {services.map(srv => (
+                                                            <option key={srv._id} value={srv._id}>{srv.title}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="mt-auto">
+                                            <div className="flex items-baseline gap-1 mb-8">
+                                                <span className="text-3xl font-black text-slate-900">{item.priceLabel}</span>
+                                                <span className="text-slate-400 font-bold text-sm">
+                                                    {item.type === 'subscription' ? ` / ${item.duration} ${item.durationType}` : '/ one-time'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => handlePurchase(item)}
+                                        className="relative z-10 w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-indigo-600 hover:shadow-xl hover:shadow-indigo-100 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Plus size={14} />
+                                        Purchase Now
+                                    </button>
+                                </div>
+                            ))}
+                            {filteredItems.length === 0 && (
+                                <div className="col-span-full py-20 text-center text-slate-400 font-bold">
+                                    No purchase packages found in this category.
+                                </div>
+                            )}
                         </div>
-                        <div className="bg-amber-50/50 p-8 rounded-[40px] border border-amber-100 flex items-center gap-6">
-                            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-amber-600 shadow-lg shadow-amber-200/50"><Box size={32} /></div>
-                            <div><h5 className="font-black text-slate-900 text-lg">Global Shipping</h5><p className="text-slate-500 text-xs font-medium">Delivered to your studio door.</p></div>
-                        </div>
-                    </div>
+                    )}
 
                 </div>
             </main>

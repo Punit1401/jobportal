@@ -27,8 +27,8 @@ const ServiceCard = ({ service, onDelete, onEdit, isLocked }) => {
         <span className="text-2xl font-black text-indigo-600">₹{service.price}</span>
       </div>
       <div className="mb-4 relative z-10">
-        <div className={`overflow-hidden transition-all duration-500 ${isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-          <p className="text-slate-500 text-sm font-medium pt-2 pb-4 border-t border-slate-50 mt-2">{service.description}</p>
+        <div className={`transition-all duration-500 ${isOpen ? 'max-h-60 overflow-y-auto opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+          <p className="text-slate-500 text-sm font-medium pt-2 pb-4 border-t border-slate-50 mt-2 whitespace-pre-line">{service.description}</p>
         </div>
         <button onClick={() => setIsOpen(!isOpen)} className="text-indigo-600 text-[10px] font-black uppercase flex items-center gap-1 mt-2 outline-none">
           {isOpen ? <><ChevronUp size={14} /> Show Less</> : <><ChevronDown size={14} /> View Details</>}
@@ -57,7 +57,8 @@ export default function CreateService() {
   const [services, setServices] = useState([]);
   const [status, setStatus] = useState({ type: '', message: '' });
   
-  const [providerInfo, setProviderInfo] = useState({ fullName: '', mobile: '', isPaid: false }); // isPaid ઉમેર્યું
+  const [providerInfo, setProviderInfo] = useState({ fullName: '', mobile: '' });
+  const [canUseSystem, setCanUseSystem] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
   
@@ -71,10 +72,18 @@ export default function CreateService() {
   });
 
   useEffect(() => {
-    if (session?.user?.email) {
-      fetchProviderDetails(session.user.email);
-    }
-    fetchServices();
+    const init = async () => {
+      if (session?.user?.email) {
+        await fetchProviderDetails(session.user.email);
+        const statusRes = await fetch("/api/partner/status", { cache: "no-store" });
+        const statusData = await statusRes.json();
+        if (statusData.success) {
+          setCanUseSystem(!!statusData.access?.canUseSystem);
+        }
+      }
+      fetchServices();
+    };
+    init();
   }, [session]);
 
   const fetchProviderDetails = async (email) => {
@@ -84,10 +93,9 @@ export default function CreateService() {
       if (res.ok && data.providers) {
         const currentProfile = data.providers.find(p => p.email === email);
         if (currentProfile) {
-          setProviderInfo({ 
-            fullName: currentProfile.fullName || '', 
-            mobile: currentProfile.mobile || '',
-            isPaid: currentProfile.isPaid || false // પેમેન્ટ સ્ટેટસ સેવ કર્યું
+          setProviderInfo({
+            fullName: currentProfile.fullName || "",
+            mobile: currentProfile.mobile || "",
           });
           
           if (!editingId) {
@@ -112,8 +120,9 @@ export default function CreateService() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!providerInfo.isPaid) {
-      alert("Please activate your account to post services.");
+    if (!canUseSystem) {
+      alert("Please complete your profile, get admin verification, and purchase a subscription plan.");
+      router.push("/serviceprovider/dashboard");
       return;
     }
     setIsSubmitting(true);
@@ -159,7 +168,7 @@ export default function CreateService() {
   };
 
   const handleEditClick = (s) => {
-    if (!providerInfo.isPaid) return;
+    if (!canUseSystem) return;
     setEditingId(s._id);
     setFormData({ 
         title: s.title, 
@@ -173,7 +182,7 @@ export default function CreateService() {
   };
 
   const handleDelete = async (id) => {
-    if (!providerInfo.isPaid) return;
+    if (!canUseSystem) return;
     if (confirm("Delete this service?")) {
       await fetch(`/api/serviceprovider/serviceform?id=${id}`, { method: 'DELETE' });
       fetchServices();
@@ -194,25 +203,23 @@ export default function CreateService() {
       <main className="flex-1 p-6 lg:p-10">
         <div className="max-w-5xl mx-auto">
           
-          {/* જો પેમેન્ટ ના કર્યું હોય તો Lock મેસેજ */}
-          {!providerInfo.isPaid ? (
+          {!canUseSystem ? (
             <div className="bg-slate-900 rounded-[40px] p-10 text-white mb-12 shadow-2xl relative overflow-hidden">
                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
                   <div className="text-center md:text-left">
                     <div className="w-16 h-16 bg-white/10 rounded-3xl flex items-center justify-center mb-6 mx-auto md:mx-0 text-indigo-400 border border-white/10">
                       <Lock size={32} />
                     </div>
-                    <h1 className="text-3xl font-black mb-2 italic">Posting is Locked!</h1>
-                    <p className="text-slate-400 font-medium max-w-md">You need to pay the one-time activation fee to publish services and start receiving customer leads.</p>
+                    <h1 className="text-3xl font-black mb-2 italic">Service Post Locked</h1>
+                    <p className="text-slate-400 font-medium max-w-md">Complete your profile, get admin verification, and purchase a subscription plan to publish services.</p>
                   </div>
                   <button onClick={() => router.push('/serviceprovider/dashboard')} className="bg-indigo-600 text-white px-10 py-5 rounded-2xl font-black flex items-center gap-3 hover:scale-105 transition-all shadow-xl whitespace-nowrap active:scale-95">
-                    <CreditCard size={20} /> Go to Payment <ArrowRight size={18} />
+                    <ArrowRight size={20} /> Dashboard <ArrowRight size={18} />
                   </button>
                </div>
                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 blur-[100px] rounded-full -mr-20 -mt-20"></div>
             </div>
           ) : (
-            /* પેમેન્ટ કર્યું હોય તો જ ફોર્મ દેખાશે */
             <div className="bg-white rounded-[40px] shadow-sm border border-slate-100 p-8 mb-12">
               <h1 className="text-3xl font-black text-slate-900">{editingId ? "Edit Service" : "Create Service"}</h1>
               <div className="flex gap-4 mt-2 mb-6">
@@ -260,7 +267,7 @@ export default function CreateService() {
                 service={s} 
                 onDelete={handleDelete} 
                 onEdit={handleEditClick} 
-                isLocked={!providerInfo.isPaid} // જો પેમેન્ટ ના હોય તો કાર્ડ પણ લોક દેખાશે
+                isLocked={!canUseSystem}
               />
             ))}
           </div>

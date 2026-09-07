@@ -21,7 +21,58 @@ export default function CandidateDashboard() {
   const [myJobs, setMyJobs] = useState([]);
   const [editingId, setEditingId] = useState(null);
 
-  const [jobData, setJobData] = useState({
+  const [postType, setPostType] = useState("form"); // "form" | "image"
+  const [imageVacancy, setImageVacancy] = useState({
+    title: "",
+    type: "Govt",
+    image: "",
+    fileType: "image",
+    fileName: ""
+  });
+
+  const handleImageVacancyUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const isPdf = file.type === "application/pdf" || file.name.endsWith(".pdf");
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImageVacancy({
+        ...imageVacancy,
+        image: reader.result,
+        fileType: isPdf ? "pdf" : "image",
+        fileName: file.name
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageVacancySubmit = async (e) => {
+    e.preventDefault();
+    if (!imageVacancy.title) return alert("Please enter a title");
+    if (!imageVacancy.image) return alert("Please upload an Image or PDF file");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/bulk-vacancies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(imageVacancy)
+      });
+      if (res.ok) {
+        alert("🚀 Vacancy file (Image/PDF) submitted successfully for Admin approval!");
+        setImageVacancy({ title: "", type: "Govt", image: "", fileType: "image", fileName: "" });
+        setPostType("form");
+      } else {
+        const errData = await res.json();
+        alert(errData.error || "Failed to submit vacancy");
+      }
+    } catch (err) {
+      alert("Failed to submit vacancy");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const defaultJob = {
     title: "", category: "", jobType: "Full-time",
     location: "", salaryRange: "", experienceLevel: "",
     description: "", requirements: "", deadline: "",
@@ -29,7 +80,8 @@ export default function CandidateDashboard() {
     Reference: "",
     applyLink: "", applyEmail: "", applyPhone: "",
     applyPersonName: ""
-  });
+  };
+  const [jobsData, setJobsData] = useState([{ ...defaultJob }]);
 
   const [companyData, setCompanyData] = useState({
     companyName: "", tagline: "", industry: "", department: "",
@@ -105,7 +157,8 @@ export default function CandidateDashboard() {
         body: JSON.stringify({ rawText: text }),
       });
       const result = await res.json();
-      if (result.job) setJobData(prev => ({ ...prev, ...result.job }));
+      if (result.jobs && result.jobs.length > 0) setJobsData(result.jobs);
+      else if (result.job) setJobsData([{ ...defaultJob, ...result.job }]);
       if (result.company) setCompanyData(prev => ({ ...prev, ...result.company }));
     } catch (err) {
       alert("AI Error: " + err.message);
@@ -160,41 +213,48 @@ export default function CandidateDashboard() {
   const handlePublish = async () => {
     setLoading(true);
     try {
-      let finalDeadline = jobData.deadline;
-      if (!finalDeadline) {
-        const date = new Date();
-        date.setDate(date.getDate() + 7);
-        finalDeadline = date.toISOString().split('T')[0];
+      let successCount = 0;
+      for (const job of jobsData) {
+        let finalDeadline = job.deadline;
+        if (!finalDeadline) {
+          const date = new Date();
+          date.setDate(date.getDate() + 7);
+          finalDeadline = date.toISOString().split('T')[0];
+        }
+
+        const payload = {
+          ...job,
+          postedByEmail: session?.user?.email,
+          deadline: finalDeadline,
+          companyDetails: companyData,
+          ...(editingId && { _id: editingId })
+        };
+
+        const url = "/api/candidate-jobs";
+        const method = editingId ? "PUT" : "POST";
+
+        const response = await fetch(url, {
+          method: method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+          successCount++;
+        } else {
+          const errData = await response.json();
+          throw new Error(errData.error || "Upload failed for a job");
+        }
       }
 
-      const payload = {
-        ...jobData,
-        postedByEmail: session?.user?.email,
-        deadline: finalDeadline,
-        companyDetails: companyData,
-        ...(editingId && { _id: editingId })
-      };
-
-      const url = "/api/candidate-jobs";
-      const method = editingId ? "PUT" : "POST";
-
-      const response = await fetch(url, {
-        method: method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        alert(editingId ? "✅ Updated Successfully!" : "🚀 Published Successfully!");
+      if (successCount > 0) {
+        alert(editingId ? "✅ Updated Successfully!" : `🚀 ${successCount} Job(s) Published Successfully!`);
         setEditingId(null);
         resetForm();
         fetchMyJobs();
-      } else {
-        const errData = await response.json();
-        alert("Error: " + errData.error);
       }
     } catch (err) {
-      alert("Network Error: " + err.message);
+      alert("Error: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -215,13 +275,13 @@ export default function CandidateDashboard() {
 
   const handleEdit = (job) => {
     setEditingId(job._id);
-    setJobData({ ...job });
+    setJobsData([{ ...job }]);
     setCompanyData({ ...job.companyDetails });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const resetForm = () => {
-    setJobData({ title: "", category: "", jobType: "Full-time", location: "", salaryRange: "", experienceLevel: "", description: "", requirements: "", deadline: "", industry: "", profession: "", designation: "", department: "", Reference: "", applyLink: "", applyEmail: "", applyPhone: "", applyPersonName: "" });
+    setJobsData([{ ...defaultJob }]);
     setCompanyData({ companyName: "", tagline: "", industry: "", department: "", profession: "", designation: "", website: "", email: "", mobile: "", location: "", address: "", companySize: "1 - 5", recruiterType: "Client", companyType: "Pvt Ltd", founded: "", description: "", specialties: "", logo: "", contactPersonName: "", contactPersonNumber: "", contactPersonEmail: "", ownerName: "", ownerNumber: "", ownerEmail: "" });
     setPastedText("");
   };
@@ -235,17 +295,125 @@ export default function CandidateDashboard() {
       <main className="flex-1 h-screen overflow-y-auto p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
           <header className="mb-8 flex justify-between items-center">
-            <h2 className="text-3xl font-black text-slate-800">{editingId ? "Update Career Listing" : "Post New Career Listing"}</h2>
-            <div className="flex gap-3">
-              {editingId && <button onClick={() => { setEditingId(null); resetForm(); }} className="px-6 py-4 font-bold text-slate-500 uppercase">Cancel</button>}
-              <button onClick={handlePublish} disabled={loading} className="btn-primary px-10 py-4 shadow-xl uppercase flex items-center gap-2">
-                {loading && <Loader2 size={18} className="animate-spin" />}
-                {editingId ? "Update Now" : "Publish Live"}
-              </button>
-            </div>
+            <h2 className="text-3xl font-black text-slate-800">
+              {postType === "image" ? "Submit Vacancy Image" : (editingId ? "Update Career Listing" : "Post New Career Listing")}
+            </h2>
+            {postType === "form" && (
+              <div className="flex gap-3">
+                {editingId && <button onClick={() => { setEditingId(null); resetForm(); }} className="px-6 py-4 font-bold text-slate-500 uppercase">Cancel</button>}
+                <button onClick={handlePublish} disabled={loading} className="btn-primary px-10 py-4 shadow-xl uppercase flex items-center gap-2">
+                  {loading && <Loader2 size={18} className="animate-spin" />}
+                  {editingId ? "Update Now" : "Publish Live"}
+                </button>
+              </div>
+            )}
           </header>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
+          {/* Toggle Tab */}
+          <div className="flex gap-2 bg-slate-200/60 p-1.5 rounded-2xl w-fit mb-8">
+            <button
+              onClick={() => setPostType("form")}
+              className={`px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${
+                postType === "form" ? "bg-white text-indigo-600 shadow-md" : "text-slate-600 hover:text-slate-800"
+              }`}
+            >
+              Standard Job Form
+            </button>
+            <button
+              onClick={() => setPostType("image")}
+              className={`px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${
+                postType === "image" ? "bg-white text-indigo-600 shadow-md" : "text-slate-600 hover:text-slate-800"
+              }`}
+            >
+              Upload Vacancy Image
+            </button>
+          </div>
+
+          {postType === "image" ? (
+            <div className="max-w-xl mx-auto bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm space-y-6 mb-12">
+              <div>
+                <h3 className="text-xl font-black text-slate-800">Upload Vacancy Image</h3>
+                <p className="text-xs text-slate-400 font-bold uppercase mt-1">Submit an image-based job alert for Admin approval</p>
+              </div>
+
+              <form onSubmit={handleImageVacancySubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Job Title / Reference</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Gujarat Police Recruitment 2024"
+                    required
+                    value={imageVacancy.title}
+                    onChange={(e) => setImageVacancy({ ...imageVacancy, title: e.target.value })}
+                    className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-transparent focus:border-indigo-500 focus:bg-white transition-all outline-none font-bold text-slate-700"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Vacancy Category</label>
+                  <div className="flex gap-4">
+                    {["Govt", "Pvt"].map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setImageVacancy({ ...imageVacancy, type: t })}
+                        className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border-2 ${imageVacancy.type === t
+                            ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100"
+                            : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"
+                          }`}
+                      >
+                        {t} Job
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Vacancy File (Image or PDF Poster)</label>
+                  <div className="relative group cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={handleImageVacancyUpload}
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                    />
+                    <div className={`aspect-video rounded-[2rem] border-4 border-dashed flex flex-col items-center justify-center transition-all ${imageVacancy.image ? "border-emerald-500 bg-emerald-50/20" : "border-slate-100 bg-slate-50 group-hover:bg-slate-100 group-hover:border-indigo-200"
+                      }`}>
+                      {imageVacancy.image ? (
+                        <div className="relative w-full h-full p-4 flex flex-col items-center justify-center">
+                          {imageVacancy.fileType === "pdf" ? (
+                            <div className="flex flex-col items-center gap-2 text-center">
+                              <FileText className="text-red-500 animate-pulse" size={48} />
+                              <span className="text-xs font-black text-slate-800 line-clamp-1">{imageVacancy.fileName || "Uploaded Vacancy Document.pdf"}</span>
+                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full uppercase">PDF Document Attached</span>
+                            </div>
+                          ) : (
+                            <img src={imageVacancy.image} className="w-full h-full object-contain rounded-xl" />
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform">
+                            <UploadCloud className="text-slate-400 group-hover:text-indigo-600 transition-colors" size={28} />
+                          </div>
+                          <p className="font-black text-slate-400 uppercase text-[10px] tracking-widest group-hover:text-indigo-600">Click to Select Image or PDF Document</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-slate-900 text-white py-5 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl hover:bg-black transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                >
+                  {loading ? <Loader2 className="animate-spin" /> : "Submit for Admin Approval"}
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
 
             {/* AI IMPORT SECTION */}
             <div className="lg:col-span-5 space-y-6">
@@ -340,80 +508,98 @@ export default function CandidateDashboard() {
 
             {/* JOB DETAILS SECTION */}
             <div className="lg:col-span-7 space-y-6">
-              <div className="card-box shadow-lg">
-                <h3 className="section-title"> <Briefcase size={18} /> Job Vacancy Details </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <label className="label-style">Job Title</label>
-                    <input className="input-style font-bold text-indigo-600" placeholder="Ex: Senior Developer" value={jobData.title || ""} onChange={e => setJobData({ ...jobData, title: e.target.value })} />
+              {jobsData.map((job, index) => (
+                <div key={index} className="space-y-6 relative border-b-2 border-indigo-100 pb-8 mb-4 last:border-0">
+                  {jobsData.length > 1 && (
+                    <div className="absolute top-2 right-2 flex gap-2">
+                      <span className="text-xs font-bold text-indigo-500 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">Job {index + 1}</span>
+                      <button
+                        onClick={() => {
+                          const newJobs = jobsData.filter((_, i) => i !== index);
+                          setJobsData(newJobs.length ? newJobs : [{ ...defaultJob }]);
+                        }}
+                        className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-1 rounded text-xs font-bold transition"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                  <div className="card-box shadow-lg">
+                    <h3 className="section-title"> <Briefcase size={18} /> Job Vacancy Details {jobsData.length > 1 ? `(${index + 1})` : ''} </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2">
+                        <label className="label-style">Job Title</label>
+                        <input className="input-style font-bold text-indigo-600" placeholder="Ex: Senior Developer" value={job.title || ""} onChange={e => { const newJobs = [...jobsData]; newJobs[index].title = e.target.value; setJobsData(newJobs); }} />
+                      </div>
+                      <div>
+                        <label className="label-style">Designation</label>
+                        <input className="input-style" placeholder="Ex: Lead" value={job.designation || ""} onChange={e => { const newJobs = [...jobsData]; newJobs[index].designation = e.target.value; setJobsData(newJobs); }} />
+                      </div>
+                      <div>
+                        <label className="label-style">Reference</label>
+                        <input className="input-style" placeholder="Ex: Employee Ref / Source" value={job.Reference || ""} onChange={e => { const newJobs = [...jobsData]; newJobs[index].Reference = e.target.value; setJobsData(newJobs); }} />
+                      </div>
+                      <div>
+                        <label className="label-style">Job Type</label>
+                        <select className="input-style" value={job.jobType || "Full-time"} onChange={e => { const newJobs = [...jobsData]; newJobs[index].jobType = e.target.value; setJobsData(newJobs); }}>
+                          <option value="Full-time">Full-time</option>
+                          <option value="Part-time">Part-time</option>
+                          <option value="Contract">Contract</option>
+                          <option value="Internship">Internship</option>
+                          <option value="Remote / Freelance">Remote / Freelance</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label-style">Location</label>
+                        <input className="input-style" placeholder="Ex: Remote / City" value={job.location || ""} onChange={e => { const newJobs = [...jobsData]; newJobs[index].location = e.target.value; setJobsData(newJobs); }} />
+                      </div>
+                      <div>
+                        <label className="label-style">Salary Range</label>
+                        <input className="input-style" placeholder="Ex: 5L - 8L" value={job.salaryRange || ""} onChange={e => { const newJobs = [...jobsData]; newJobs[index].salaryRange = e.target.value; setJobsData(newJobs); }} />
+                      </div>
+                      <div>
+                        <label className="label-style">Experience Level</label>
+                        <input className="input-style" placeholder="Ex: 2+ Years" value={job.experienceLevel || ""} onChange={e => { const newJobs = [...jobsData]; newJobs[index].experienceLevel = e.target.value; setJobsData(newJobs); }} />
+                      </div>
+                      <div>
+                        <label className="label-style">Application Deadline</label>
+                        <input className="input-style" type="date" value={job.deadline || ""} onChange={e => { const newJobs = [...jobsData]; newJobs[index].deadline = e.target.value; setJobsData(newJobs); }} />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="label-style">Job Description</label>
+                        <textarea className="input-style h-24" placeholder="Role and responsibilities..." value={job.description || ""} onChange={e => { const newJobs = [...jobsData]; newJobs[index].description = e.target.value; setJobsData(newJobs); }} />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="label-style">Key Requirements</label>
+                        <textarea className="input-style h-24" placeholder="Skills, education, etc..." value={job.requirements || ""} onChange={e => { const newJobs = [...jobsData]; newJobs[index].requirements = e.target.value; setJobsData(newJobs); }} />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="label-style">Designation</label>
-                    <input className="input-style" placeholder="Ex: Lead" value={jobData.designation || ""} onChange={e => setJobData({ ...jobData, designation: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="label-style">Reference</label>
-                    <input className="input-style" placeholder="Ex: Employee Ref / Source" value={jobData.Reference || ""} onChange={e => setJobData({ ...jobData, Reference: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="label-style">Job Type</label>
-                    <select className="input-style" value={jobData.jobType || "Full-time"} onChange={e => setJobData({ ...jobData, jobType: e.target.value })}>
-                      <option value="Full-time">Full-time</option>
-                      <option value="Part-time">Part-time</option>
-                      <option value="Contract">Contract</option>
-                      <option value="Internship">Internship</option>
-                      <option value="Remote / Freelance">Remote / Freelance</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label-style">Location</label>
-                    <input className="input-style" placeholder="Ex: Remote / City" value={jobData.location || ""} onChange={e => setJobData({ ...jobData, location: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="label-style">Salary Range</label>
-                    <input className="input-style" placeholder="Ex: 5L - 8L" value={jobData.salaryRange || ""} onChange={e => setJobData({ ...jobData, salaryRange: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="label-style">Experience Level</label>
-                    <input className="input-style" placeholder="Ex: 2+ Years" value={jobData.experienceLevel || ""} onChange={e => setJobData({ ...jobData, experienceLevel: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="label-style">Application Deadline</label>
-                    <input className="input-style" type="date" value={jobData.deadline || ""} onChange={e => setJobData({ ...jobData, deadline: e.target.value })} />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="label-style">Job Description</label>
-                    <textarea className="input-style h-24" placeholder="Role and responsibilities..." value={jobData.description || ""} onChange={e => setJobData({ ...jobData, description: e.target.value })} />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="label-style">Key Requirements</label>
-                    <textarea className="input-style h-24" placeholder="Skills, education, etc..." value={jobData.requirements || ""} onChange={e => setJobData({ ...jobData, requirements: e.target.value })} />
-                  </div>
-                </div>
-              </div>
 
-              {/* APPLY HERE SECTION */}
-              <div className="card-box border-2 border-emerald-100 bg-emerald-50/10">
-                <h3 className="section-title text-emerald-600"> <ExternalLink size={18} /> Apply Here </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="label-style">Name of Person</label>
-                    <input className="input-style" placeholder="Ex: Rahul Sharma" value={jobData.applyPersonName || ""} onChange={e => setJobData({ ...jobData, applyPersonName: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="label-style">Contact Number</label>
-                    <input className="input-style" placeholder="Ex: +91 98765 43210" value={jobData.applyPhone || ""} onChange={e => setJobData({ ...jobData, applyPhone: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="label-style">Application Email</label>
-                    <input className="input-style" placeholder="Ex: hr@company.com" value={jobData.applyEmail || ""} onChange={e => setJobData({ ...jobData, applyEmail: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="label-style">URL</label>
-                    <input className="input-style" placeholder="Ex: https://forms.gle/..." value={jobData.applyLink || ""} onChange={e => setJobData({ ...jobData, applyLink: e.target.value })} />
+                  {/* APPLY HERE SECTION */}
+                  <div className="card-box border-2 border-emerald-100 bg-emerald-50/10">
+                    <h3 className="section-title text-emerald-600"> <ExternalLink size={18} /> Apply Here {jobsData.length > 1 ? `(Job ${index + 1})` : ''} </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="label-style">Name of Person</label>
+                        <input className="input-style" placeholder="Ex: Rahul Sharma" value={job.applyPersonName || ""} onChange={e => { const newJobs = [...jobsData]; newJobs[index].applyPersonName = e.target.value; setJobsData(newJobs); }} />
+                      </div>
+                      <div>
+                        <label className="label-style">Contact Number</label>
+                        <input className="input-style" placeholder="Ex: +91 98765 43210" value={job.applyPhone || ""} onChange={e => { const newJobs = [...jobsData]; newJobs[index].applyPhone = e.target.value; setJobsData(newJobs); }} />
+                      </div>
+                      <div>
+                        <label className="label-style">Application Email</label>
+                        <input className="input-style" placeholder="Ex: hr@company.com" value={job.applyEmail || ""} onChange={e => { const newJobs = [...jobsData]; newJobs[index].applyEmail = e.target.value; setJobsData(newJobs); }} />
+                      </div>
+                      <div>
+                        <label className="label-style">URL</label>
+                        <input className="input-style" placeholder="Ex: https://forms.gle/..." value={job.applyLink || ""} onChange={e => { const newJobs = [...jobsData]; newJobs[index].applyLink = e.target.value; setJobsData(newJobs); }} />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ))}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* <div className="card-box bg-emerald-50/30">
@@ -435,6 +621,7 @@ export default function CandidateDashboard() {
               </div>
             </div>
           </div>
+          )}
 
           {/* LIVE LISTINGS SECTION */}
           <div className="mt-12 border-t pt-10">

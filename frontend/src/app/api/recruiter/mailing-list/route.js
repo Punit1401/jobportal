@@ -15,7 +15,7 @@ export async function GET(req) {
     if (!recruiter) return NextResponse.json({ error: "Recruiter not found" }, { status: 404 });
 
     // Return custom lists. We removed the auto-generated dynamic lists for a cleaner UX as requested.
-    const customLists = await MailingList.find({ recruiterId: recruiter._id }).populate('members');
+    const customLists = await MailingList.find({ ownerId: recruiter._id, ownerRole: "recruiter" }).populate('members');
 
     return NextResponse.json({ ok: true, data: customLists });
   } catch (err) {
@@ -36,7 +36,8 @@ export async function POST(req) {
     if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
 
     const newList = await MailingList.create({
-      recruiterId: recruiter._id,
+      ownerId: recruiter._id,
+      ownerRole: "recruiter",
       name,
       type: type || "Custom",
       members: candidateIds || [],
@@ -62,7 +63,7 @@ export async function PATCH(req) {
     if (!listId || !candidateIds) return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
 
     const list = await MailingList.findOneAndUpdate(
-      { _id: listId, recruiterId: recruiter._id },
+      { _id: listId, ownerId: recruiter._id, ownerRole: "recruiter" },
       { $addToSet: { members: { $each: candidateIds } } },
       { new: true }
     );
@@ -91,7 +92,7 @@ export async function PUT(req) {
     if (!id || !name) return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
 
     const list = await MailingList.findOneAndUpdate(
-      { _id: id, recruiterId: recruiter._id },
+      { _id: id, ownerId: recruiter._id, ownerRole: "recruiter" },
       { name },
       { new: true }
     );
@@ -118,13 +119,13 @@ export async function DELETE(req) {
     const clearAll = searchParams.get("all");
 
     if (clearAll === "true") {
-        await MailingList.deleteMany({ recruiterId: recruiter._id });
+        await MailingList.deleteMany({ ownerId: recruiter._id, ownerRole: "recruiter" });
         return NextResponse.json({ ok: true, message: "All lists cleared" });
     }
 
     if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
 
-    await MailingList.findOneAndDelete({ _id: id, recruiterId: recruiter._id });
+    await MailingList.findOneAndDelete({ _id: id, ownerId: recruiter._id, ownerRole: "recruiter" });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

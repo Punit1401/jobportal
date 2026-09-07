@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Sidebar from '@/components/UserSidebar';
 import { Send, GraduationCap, User, Bot, Loader2, PlusCircle, History, X, MessageSquare } from 'lucide-react';
+import FeatureGuard from "@/components/FeatureGuard";
 
 export default function AITutorPage() {
   const [input, setInput] = useState('');
@@ -153,7 +154,8 @@ export default function AITutorPage() {
       )}
 
       <div className="flex-1 flex flex-col h-full bg-slate-50/50 relative min-w-0">
-        <header className="h-20 flex-shrink-0 bg-white border-b border-slate-100 px-6 md:px-8 flex items-center justify-between z-30 shadow-sm">
+        <FeatureGuard featureName="Learning Features">
+          <header className="h-20 flex-shrink-0 bg-white border-b border-slate-100 px-6 md:px-8 flex items-center justify-between z-30 shadow-sm">
           <div className="flex items-center gap-3">
             <h1 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-2 tracking-tight">
               AI Tutor <GraduationCap size={28} className="text-indigo-600" />
@@ -221,6 +223,7 @@ export default function AITutorPage() {
             </form>
           </div>
         </div>
+        </FeatureGuard>
       </div>
     </div>
   );

@@ -51,17 +51,26 @@ export default function CouponManagement() {
         e.preventDefault();
         try {
             const method = editingCoupon ? "PUT" : "POST";
+            
+            // Clean the discountValue: strip any non-digit/dot characters (e.g. "%") and convert to number
+            const discountValStr = String(formData.discountValue).replace(/[^\d.]/g, "");
+            const parsedDiscountValue = Number(discountValStr) || 0;
+
+            const payload = {
+                ...formData,
+                discountValue: parsedDiscountValue
+            };
+
             const res = await fetch("/api/admin/coupons", {
                 method,
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(editingCoupon ? { ...formData, id: editingCoupon } : formData),
+                body: JSON.stringify(editingCoupon ? { ...payload, id: editingCoupon } : payload),
             });
 
-            // આ ચેક ઉમેરો
             if (!res.ok) {
                 const errorText = await res.text();
                 console.error("Server Error:", errorText);
-                alert("કૂપન સેવ કરવામાં પ્રોબ્લેમ છે!");
+                alert("There was a problem saving the coupon!");
                 return;
             }
 

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import Sidebar from '@/components/UserSidebar';
 import { Sparkles, FileText, Target, Loader2, Copy, Upload, Trash2, Wand2, UserCircle, Image as ImageIcon } from 'lucide-react';
+import FeatureGuard from '@/components/FeatureGuard';
 
 export default function AITools() {
   const [loading, setLoading] = useState(false);
@@ -137,7 +138,8 @@ export default function AITools() {
       </div>
 
       <main className="flex-1 overflow-y-auto p-6 lg:p-10">
-        <div className="max-w-6xl mx-auto">
+        <FeatureGuard featureName="AI Features">
+          <div className="max-w-6xl mx-auto">
           <div className="mb-10 text-center md:text-left pt-16 lg:pt-0">
             <h1 className="text-4xl font-black text-slate-900 flex items-center gap-3">
               AI Career Suite <Sparkles className="text-indigo-600" />
@@ -314,6 +316,7 @@ export default function AITools() {
             </div>
           </div>
         </div>
+        </FeatureGuard>
       </main>
     </div>
   );

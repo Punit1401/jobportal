@@ -12,8 +12,8 @@ export async function GET(req) {
     }
 
     // Check role
-    const isAdmin = token.role === "admin";
-    return new Response(JSON.stringify({ loggedIn: Boolean(isAdmin), role: token.role || null }), {
+    const isAuthorized = token.role === "admin" || token.role === "staff";
+    return new Response(JSON.stringify({ loggedIn: Boolean(isAuthorized), role: token.role || null }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

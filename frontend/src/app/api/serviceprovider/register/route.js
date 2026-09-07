@@ -115,6 +115,7 @@ export async function PUT(req) {
       location, 
       mobile, 
       whatsappNumber,
+      logo,
       // KYC Fields
       aadharNumber,
       panNumber,
@@ -137,6 +138,7 @@ export async function PUT(req) {
           location, 
           mobile, 
           whatsappNumber,
+          logo,
           aadharNumber,
           panNumber,
           gstNumber,

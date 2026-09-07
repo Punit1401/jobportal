@@ -10,9 +10,11 @@ export async function GET(req) {
         const session = await getServerSession(authOptions);
         if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+        const ownerRole = session.user.role || "serviceprovider";
+
         const data = await MailTemplate.find({ 
             ownerId: session.user.id,
-            ownerRole: session.user.role 
+            ownerRole
         }).sort({ createdAt: -1 });
 
         return NextResponse.json({ ok: true, data });
@@ -28,6 +30,7 @@ export async function POST(req) {
         if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         const { title, subject, content, id } = await req.json();
+        const ownerRole = session.user.role || "serviceprovider";
 
         let template;
         if (id) {
@@ -41,7 +44,7 @@ export async function POST(req) {
             // Create new template
             template = await MailTemplate.create({
                 ownerId: session.user.id,
-                ownerRole: session.user.role,
+                ownerRole,
                 title,
                 subject,
                 content

@@ -381,6 +381,7 @@
 // }
 import nodemailer from "nodemailer";
 import connectMongo from "@/lib/mongodb";
+import mongoose from "mongoose";
 import Application from "@/models/Application";
 import Candidate from "@/models/Candidate";
 import User from "@/models/User";
@@ -390,6 +391,10 @@ import ExcelCandidate from "@/models/ExcelCandidate";
 import EmailQueue from "@/models/EmailQueue";
 import { ScheduledMail } from "@/models/Mailing"; // ✅ Added for History
 import { NextResponse } from "next/server";
+import Recruiter from "@/models/Recruiter";
+import ServiceProvider from "@/models/serviceprovider";
+import ServiceForm from "@/models/serviceform";
+import Company from "@/models/Company";
 
 export async function POST(req) {
   try {
@@ -401,7 +406,9 @@ export async function POST(req) {
       userIds,
       allUsers,
       type,
-      emails = []
+      emails = [],
+      sentEmails = [],
+      isSent = true
     } = await req.json();
 
     if (!subject || !message) {
@@ -411,10 +418,10 @@ export async function POST(req) {
       );
     }
 
-    let users = [];
+    let dbEmails = [];
 
     // ---------------------------------
-    // FETCH USERS BASED ON TYPE
+    // FETCH USERS BASED ON TYPE AND RESOLVE EMAILS
     // ---------------------------------
     if (type === "excel-candidates") {
       if (allUsers)
@@ -424,36 +431,125 @@ export async function POST(req) {
           { _id: { $in: userIds } },
           "email unsubscribed mailCount"
         );
+      dbEmails = users.map(u => u.email).filter(Boolean);
     }
 
-    else if (type === "candidates") {
+    else if (type === "candidates" || type === "candidate") {
       if (allUsers)
         users = await Candidate.find({}, "email unsubscribed mailCount");
-      else if (userIds?.length)
+      else if (userIds?.length) {
         users = await Candidate.find(
           { _id: { $in: userIds } },
           "email unsubscribed mailCount"
         );
+      }
+      dbEmails = users.map(u => u.email).filter(Boolean);
+    }
+
+    else if (type === "recruiter") {
+      if (allUsers) {
+        users = await Recruiter.find({}, "email");
+        dbEmails = users.map(u => u.email).filter(Boolean);
+      } else if (userIds?.length) {
+        const recruiters = await Recruiter.find({ _id: { $in: userIds } }, "email");
+        if (recruiters.length > 0) {
+          dbEmails = recruiters.map(r => r.email).filter(Boolean);
+        } else {
+          // They are Job IDs!
+          const jobs = await Job.find({ _id: { $in: userIds } }).populate("companyId");
+          for (const job of jobs) {
+            let email = job.email || job.companyDetails?.email || job.companyId?.email;
+            if (!email && job.recruiterId) {
+              const r = await Recruiter.findOne({
+                $or: [
+                  { _id: mongoose.isValidObjectId(job.recruiterId) ? job.recruiterId : new mongoose.Types.ObjectId() },
+                  { userId: job.recruiterId },
+                  { username: job.recruiterId }
+                ]
+              }).lean();
+              email = r?.email;
+            }
+            if (email) dbEmails.push(email);
+          }
+        }
+      }
+    }
+
+    else if (type === "serviceprovider") {
+      if (allUsers) {
+        users = await ServiceProvider.find({}, "email");
+        dbEmails = users.map(u => u.email).filter(Boolean);
+      } else if (userIds?.length) {
+        const providers = await ServiceProvider.find({ _id: { $in: userIds } }, "email");
+        if (providers.length > 0) {
+          dbEmails = providers.map(p => p.email).filter(Boolean);
+        } else {
+          // They are ServiceForm IDs!
+          const services = await ServiceForm.find({ _id: { $in: userIds } });
+          dbEmails = services.map(s => s.providerEmail || s.email).filter(Boolean);
+        }
+      }
     }
 
     else {
+      // It is type: "jobs", "custom" or general broadcast
       const query = allUsers ? {} : { _id: { $in: userIds } };
-      const jobsData = await Job.find(query, "email companyDetails");
-      const candidateJobsData = await candidateJob.find(query, "email companyDetails");
-      users = [...jobsData, ...candidateJobsData];
+      
+      // 1. Resolve recruiter job emails
+      const jobsData = await Job.find(query).populate("companyId");
+      for (const job of jobsData) {
+        let email = job.email || job.companyId?.email;
+        if (!email && job.recruiterId) {
+          const r = await Recruiter.findOne({
+            $or: [
+              { _id: mongoose.isValidObjectId(job.recruiterId) ? job.recruiterId : new mongoose.Types.ObjectId() },
+              { userId: job.recruiterId },
+              { username: job.recruiterId }
+            ]
+          }).lean();
+          email = r?.email;
+        }
+        if (email) dbEmails.push(email);
+      }
+
+      // 2. Resolve candidate job emails
+      const candidateJobsData = await candidateJob.find(query);
+      for (const job of candidateJobsData) {
+        const email = job.postedByEmail || job.companyDetails?.email || job.email;
+        if (email) dbEmails.push(email);
+      }
+
+      // 3. Resolve service job emails
+      const serviceJobsData = await ServiceForm.find(query);
+      for (const service of serviceJobsData) {
+        const email = service.providerEmail || service.email;
+        if (email) dbEmails.push(email);
+      }
+
+      // 4. Resolve from User and Profile collections for direct user/candidate IDs
+      if (userIds?.length) {
+        const validIds = userIds.filter(id => mongoose.isValidObjectId(id));
+        if (validIds.length > 0) {
+          const [usersList, candsList, recsList, provsList, excelsList] = await Promise.all([
+            User.find({ _id: { $in: validIds } }, "email").lean(),
+            Candidate.find({ _id: { $in: validIds } }, "email").lean(),
+            Recruiter.find({ _id: { $in: validIds } }, "email").lean(),
+            ServiceProvider.find({ _id: { $in: validIds } }, "email").lean(),
+            ExcelCandidate.find({ _id: { $in: validIds } }, "email").lean()
+          ]);
+          usersList.forEach(u => u.email && dbEmails.push(u.email));
+          candsList.forEach(c => c.email && dbEmails.push(c.email));
+          recsList.forEach(r => r.email && dbEmails.push(r.email));
+          provsList.forEach(p => p.email && dbEmails.push(p.email));
+          excelsList.forEach(e => e.email && dbEmails.push(e.email));
+        }
+      }
     }
 
-    const dbEmails = users.map(u => {
-      return u.email ||
-        u.companyDetails?.contactPersonEmail ||
-        u.companyDetails?.ownerEmail ||
-        u.companyDetails?.email;
-    }).filter(Boolean);
-
-    const allEmails = Array.from(new Set([...dbEmails, ...emails]));
+    const allEmails = Array.from(new Set([...dbEmails, ...emails, ...sentEmails]));
 
     if (allEmails.length === 0)
-      return NextResponse.json({ error: "No valid email addresses found" });
+      return NextResponse.json({ error: "No valid email addresses found" }, { status: 400 });
 
     let finalEmails = allEmails;
 
@@ -470,18 +566,20 @@ export async function POST(req) {
     if (finalEmails.length === 0) {
       return NextResponse.json({
         error: "All selected users are unsubscribed"
-      });
+      }, { status: 400 });
     }
 
     // ---------------------------------
     // ✅ HISTORY ENTRY (મેઈલ મોકલતા પહેલા સેવ કરો જેથી ડેટા લોસ ના થાય)
     // ---------------------------------
     const mailRecord = await ScheduledMail.create({
+      ownerId: new mongoose.Types.ObjectId("000000000000000000000000"),
+      ownerRole: "admin",
       subject,
       message,
-      targetType: req.body.type, // 'custom', 'candidate' વગેરે
-      userIds: req.body.userIds, // સિલેક્ટ કરેલા IDs
-      isSent: true,
+      targetType: type || "custom", 
+      userIds: userIds || [],
+      isSent: isSent,
       recipientsCount: finalEmails.length,
       sentEmails: finalEmails,
       failedEmails: [],
@@ -491,41 +589,43 @@ export async function POST(req) {
 
     const trackingUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/track/${mailRecord._id}`;
 
-    // ---------------------------------
-    // SEND EMAIL
-    // ---------------------------------
-    try {
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
+    if (isSent) {
+      // ---------------------------------
+      // SEND EMAIL
+      // ---------------------------------
+      try {
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+          },
+        });
 
-      await transporter.verify();
+        await transporter.verify();
 
-      await transporter.sendMail({
-        from: `"ShivEn Group Admin" <${process.env.EMAIL_USER}>`,
-        to: finalEmails[0],
-        bcc: finalEmails.slice(1),
-        subject,
-        html: `  
-            <div style="font-family:sans-serif">
-              <p>${message.replace(/\n/g, "<br/>")}</p>
-              <img src="${trackingUrl}" width="1" height="1" style="display:none !important;" />
-              <hr/>
-              <p style="font-size:12px;color:#777">
-                This email was sent from ShivEn Group Admin.
-              </p>
-            </div>
-          `,
-      });
-    } catch (verifyErr) {
-      console.error("Nodemailer Error:", verifyErr);
-      // જો મેઈલ મોકલવામાં ભૂલ આવે તો રેકોર્ડ અપડેટ કરો
-      await ScheduledMail.findByIdAndUpdate(mailRecord._id, { isSent: false });
-      return NextResponse.json({ error: "Email Sending Failed: " + verifyErr.message }, { status: 500 });
+        await transporter.sendMail({
+          from: `"ShivEn Group Admin" <${process.env.EMAIL_USER}>`,
+          to: finalEmails[0],
+          bcc: finalEmails.slice(1),
+          subject,
+          html: `  
+              <div style="font-family:sans-serif">
+                <p>${message.replace(/\n/g, "<br/>")}</p>
+                <img src="${trackingUrl}" width="1" height="1" style="display:none !important;" />
+                <hr/>
+                <p style="font-size:12px;color:#777">
+                  This email was sent from ShivEn Group Admin.
+                </p>
+              </div>
+            `,
+        });
+      } catch (verifyErr) {
+        console.error("Nodemailer Error:", verifyErr);
+        // જો મેઈલ મોકલવામાં ભૂલ આવે તો રેકોર્ડ અપડેટ કરો
+        await ScheduledMail.findByIdAndUpdate(mailRecord._id, { isSent: false });
+        return NextResponse.json({ error: "Email Sending Failed: " + verifyErr.message }, { status: 500 });
+      }
     }
 
     // ---------------------------------

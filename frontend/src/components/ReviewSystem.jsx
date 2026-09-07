@@ -18,7 +18,7 @@ export default function ReviewSystem({ targetId, targetType }) {
     const fetchReviews = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/reviews?targetId=${targetId}`);
+            const res = await fetch(`/api/reviews?targetId=${targetId}&reviewType=service`, { cache: "no-store" });
             const data = await res.json();
             if (data.success) {
                 setReviews(data.reviews);
@@ -51,7 +51,8 @@ export default function ReviewSystem({ targetId, targetType }) {
                     reviewerName: session.user.name || "Anonymous User",
                     targetType,
                     rating,
-                    comment
+                    comment,
+                    reviewType: "service"
                 })
             });
             const data = await res.json();

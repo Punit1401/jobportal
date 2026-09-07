@@ -2,6 +2,8 @@ import connectMongo from "@/lib/mongodb";
 import ServiceProvider from "@/models/serviceprovider";
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 // 1. GET ALL PROVIDERS
 export async function GET() {
@@ -77,15 +79,38 @@ export async function PUT(req) {
       `
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (emailErr) {
+      console.warn("Failed to send notification email:", emailErr.message);
+    }
 
     return NextResponse.json({ 
       success: true, 
-      message: `Provider ${status} and email sent successfully!` 
+      message: `Provider ${status} updated successfully!` 
     });
 
   } catch (err) {
     console.error("ADMIN_API_ERROR:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+// DELETE: Delete service provider by id
+export async function DELETE(req) {
+  try {
+    await connectMongo();
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
+
+    await ServiceProvider.findByIdAndDelete(id);
+    return NextResponse.json({ success: true, message: "Service provider deleted successfully" });
+  } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

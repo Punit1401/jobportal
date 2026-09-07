@@ -337,6 +337,7 @@
 "use client";
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import NavBar from '@/components/Navbar';
 import { 
   Eye, EyeOff, User, Phone, Mail, 
@@ -472,9 +473,22 @@ export default function SPRegister() {
         {/* Right Side: Form */}
         <div className="w-full lg:w-2/3 overflow-y-auto px-6 py-12 md:px-16 lg:px-20">
           <div className="max-w-xl mx-auto">
-            <div className="mb-12">
+            <div className="mb-8">
               <h1 className="text-5xl font-black text-slate-900 tracking-tighter italic">Expert <span className="text-indigo-600">Join</span></h1>
-              <p className="text-slate-500 font-bold mt-2 uppercase text-[10px] tracking-[0.2em]">Quick Registration</p>
+              <p className="text-slate-500 font-bold mt-2 uppercase text-[10px] tracking-[0.2em] mb-8">Quick Registration</p>
+              
+              {/* Role Toggle Switch */}
+              <div className="flex bg-slate-100 p-1.5 rounded-2xl max-w-md">
+                <Link href="/register" className="flex-1 text-center py-2.5 rounded-xl text-slate-500 font-medium hover:text-slate-700 hover:bg-slate-200/50 transition-all text-sm">
+                  Candidate
+                </Link>
+                <Link href="/recruiter/register" className="flex-1 text-center py-2.5 rounded-xl text-slate-500 font-medium hover:text-slate-700 hover:bg-slate-200/50 transition-all text-sm">
+                  Recruiter
+                </Link>
+                <Link href="/serviceprovider/register" className="flex-1 text-center py-2.5 rounded-xl bg-white text-indigo-600 font-bold shadow-sm text-sm transition-all">
+                  Provider
+                </Link>
+              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-8">

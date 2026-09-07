@@ -15,18 +15,17 @@ export const moduleConfigs = {
     ],
   },
   "libraries": {
-    title: "Libraries",
-    subtitle: "Manage reusable libraries, assets, and references.",
+    title: "Knowledge Library",
+    subtitle: "Upload and manage guidance videos and training resources for users.",
     fields: [
-      { key: "category", label: "Category", type: "select", options: ["UI", "Docs", "Code", "Media"] },
-      { key: "version", label: "Version", placeholder: "v1.0.0" },
-      { key: "link", label: "Reference URL", placeholder: "https://..." },
+      { key: "category", label: "Target Audience", type: "select", options: ["All", "Candidates", "Recruiters", "Service Providers"] },
+      { key: "videoUrl", label: "Video URL (YouTube/Vimeo)", placeholder: "https://youtube.com/watch?v=..." },
+      { key: "thumbnail", label: "Thumbnail URL", placeholder: "https://..." },
     ],
     columns: [
-      { key: "category", label: "Category", source: "meta" },
-      { key: "version", label: "Version", source: "meta" },
-      { key: "link", label: "Link", source: "meta" },
-      { key: "description", label: "Description", source: "root" },
+      { key: "category", label: "Audience", source: "meta" },
+      { key: "videoUrl", label: "Video Link", source: "meta" },
+      { key: "status", label: "Status", source: "root" },
     ],
   },
   "third-party-integrations": {

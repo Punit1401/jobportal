@@ -5,7 +5,7 @@
 // import { getServerSession } from "next-auth/next";
 // import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-// // 1. POST: યુઝર જ્યારે એપ્લાય કરે (Candidate પ્રોફાઇલમાંથી ડેટા ખેંચીને)
+// // 1. POST: When user applies (Pulling data from Candidate profile)
 // export async function POST(req) {
 //   try {
 //     await connectMongo();
@@ -22,7 +22,7 @@
 
 //     if (!userProfile) {
 //       return NextResponse.json({ 
-//         error: "તમારી પ્રોફાઇલ અધૂરી છે. પહેલા Profile પેજ પર જઈને વિગતો ભરો!" 
+//         error: "Your profile is incomplete. Please visit the Profile page and fill in the details!" 
 //       }, { status: 400 });
 //     }
 
@@ -72,8 +72,8 @@
 //   }
 // }
 
-// // 2. GET: રિક્રુટર માટે બધા જ કેન્ડિડેટ્સનું લિસ્ટ મેળવવા
-// // 2. GET: ફક્ત જે-તે રિક્રુટર માટેના જ કેન્ડિડેટ્સનું લિસ્ટ મેળવવા
+// // 2. GET: To get the list of all candidates for the recruiter
+// // 2. GET: To get the list of candidates only for that specific recruiter
 // export async function GET(req) {
 //   try {
 //     await connectMongo();
@@ -87,7 +87,7 @@
 //     if (session.user.role === "recruiter") {
 //       apps = await Application.find({ recruiterId: session.user.id }).sort({ appliedAt: -1 });
 //     } else {
-//       // અહીં ફેરફાર: ઈમેલને Case-insensitive શોધવા માટે Regex વાપરીએ
+//       // Change here: Use Regex to find email Case-insensitive
 //       const userEmail = session.user.email;
 //       // Removed sensitive logging
 //       // console.log("Fetching apps for email:", userEmail);
@@ -115,7 +115,7 @@
 // import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 // import mongoose from "mongoose";
 
-// // 1. POST: યુઝર એપ્લાય કરે ત્યારે
+// // 1. POST: When user applies
 // export async function POST(req) {
 //   try {
 //     await connectMongo();
@@ -136,14 +136,14 @@
 
 //     if (!userProfile) {
 //       return NextResponse.json({
-//         error: "તમારી પ્રોફાઇલ અધૂરી છે. પહેલા Profile પેજ પર જઈને વિગતો ભરો!"
+//         error: "Your profile is incomplete. Please visit the Profile page and fill in the details!"
 //       }, { status: 400 });
 //     }
 
 //     // Application Create - Formatting fields for consistency
 //     const newApp = await Application.create({
 //       jobId,
-//       recruiterId, // String તરીકે સેવ થશે, પણ Schema મુજબ ObjectId માં કન્વર્ટ થઈ જશે
+//       recruiterId, // Will be saved as String, but will be converted to ObjectId per Schema
 //       name: userProfile.fullName,
 //       email: userProfile.email.toLowerCase(),
 //       role: role || "Not Specified",
@@ -179,7 +179,7 @@
 //   }
 // }
 
-// // 2. GET: ડેટા રીટ્રીવ કરવા માટે (Recruiter/Candidate)
+// // 2. GET: For retrieving data (Recruiter/Candidate)
 // export async function GET(req) {
 //   try {
 //     await connectMongo();
@@ -195,8 +195,8 @@
 
 //     let apps;
 //     if (session.user.role === "recruiter") {
-//       // રિક્રુટર માટે બધી જ એપ્લિકેશન્સ શોધો જ્યાં recruiterId મેચ થાય
-//       // આ ક્વેરી String અને ObjectId બંનેને હેન્ડલ કરશે
+//       // For recruiter, find all applications where recruiterId matches
+//       // This query will handle both String and ObjectId
 //       apps = await Application.find({
 //         $or: [
 //           { recruiterId: userId },
@@ -221,7 +221,7 @@
 //   }
 // }
 
-// // 3. PATCH: સ્ટેટસ અપડેટ કરવા માટે
+// // 3. PATCH: For updating status
 // export async function PATCH(req) {
 //   try {
 //     await connectMongo();
@@ -248,7 +248,7 @@
 //   }
 // }
 
-// // 4. DELETE: એપ્લિકેશન ડિલીટ કરવા માટે
+// // 4. DELETE: For deleting application
 // export async function DELETE(req) {
 //   try {
 //     await connectMongo();
@@ -279,7 +279,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import mongoose from "mongoose";
 
-// 1. POST: યુઝર એપ્લાય કરે ત્યારે
+// 1. POST: When user applies
 export async function POST(req) {
   try {
     await connectMongo();
@@ -315,8 +315,8 @@ export async function POST(req) {
     // Application Create - Formatting fields for consistency
     const newApp = await Application.create({
       jobId,
-      userId: session.user.id, // Schema માં આ હોવું જરૂરી છે
-      recruiterId, // String તરીકે સેવ થશે, પણ Schema મુજબ ObjectId માં કન્વર્ટ થઈ જશે
+      userId: session.user.id, // This is required in Schema
+      recruiterId, // Will be saved as String, but will be converted to ObjectId per Schema
       name: userProfile.fullName,
       email: userProfile.email.toLowerCase(),
       role: role || "Not Specified",
@@ -358,7 +358,7 @@ export async function POST(req) {
   }
 }
 
-// 2. GET: ડેટા રીટ્રીવ કરવા માટે (Recruiter/Candidate)
+// 2. GET: For retrieving data (Recruiter/Candidate)
 export async function GET(req) {
   try {
     await connectMongo();
@@ -374,13 +374,14 @@ export async function GET(req) {
 
     let apps;
     if (session.user.role === "recruiter") {
-      // રિક્રુટર માટે બધી જ એપ્લિકેશન્સ શોધો જ્યાં recruiterId મેચ થાય
-      // આ ક્વેરી String અને ObjectId બંનેને હેન્ડલ કરશે
+      // For recruiter, find all applications where recruiterId matches
+      // This query will handle both String and ObjectId
       apps = await Application.find({
         $or: [
           { recruiterId: userId },
           { recruiterId: new mongoose.Types.ObjectId(userId) }
-        ]
+        ],
+        jobId: { $nin: ["manual", null, undefined] }
       }).sort({ appliedAt: -1 });
 
       //console.log("Applications Found for Recruiter:", apps.length);
@@ -389,7 +390,8 @@ export async function GET(req) {
         $or: [
           { userId: userId },
           { email: session.user.email.toLowerCase() }
-        ]
+        ],
+        jobId: { $nin: ["manual", null, undefined] }
       }).sort({ appliedAt: -1 });
     }
 
@@ -400,7 +402,7 @@ export async function GET(req) {
   }
 }
 
-// 3. PATCH: સ્ટેટસ અપડેટ કરવા માટે
+// 3. PATCH: For updating status
 export async function PATCH(req) {
   try {
     await connectMongo();
@@ -427,7 +429,7 @@ export async function PATCH(req) {
   }
 }
 
-// 4. DELETE: એપ્લિકેશન ડિલીટ કરવા માટે
+// 4. DELETE: For deleting application
 export async function DELETE(req) {
   try {
     await connectMongo();

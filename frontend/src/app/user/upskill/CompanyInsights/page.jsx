@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Building2, Sparkles, TrendingUp, Users, MessageSquare, Star, Loader2, Search, ArrowRight } from "lucide-react";
 import UserSidebar from '@/components/UserSidebar';
+import FeatureGuard from "@/components/FeatureGuard";
 
 export default function CompanyInsights() {
     const [companyName, setCompanyName] = useState("");
@@ -42,7 +43,8 @@ export default function CompanyInsights() {
             <UserSidebar onCollapseChange={setIsSidebarCollapsed} />
 
             <main className={`flex-1 overflow-y-auto transition-all duration-300 pt-20 lg:pt-8 ${isSidebarCollapsed ? "lg:ml-24" : "lg:ml-72"}`}>
-                <div className="p-4 sm:p-6 md:p-8 lg:px-12 max-w-5xl mx-auto space-y-8">
+                <FeatureGuard featureName="Interview Preparation">
+                    <div className="p-4 sm:p-6 md:p-8 lg:px-12 max-w-5xl mx-auto space-y-8">
                     
                     {/* Header */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-4">
@@ -184,6 +186,7 @@ export default function CompanyInsights() {
                         </div>
                     )}
                 </div>
+                </FeatureGuard>
             </main>
         </div>
     );

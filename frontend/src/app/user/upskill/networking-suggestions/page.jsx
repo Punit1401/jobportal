@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Users, Sparkles, MessageSquare, Target, Share2, Loader2, ArrowRight, CheckCircle2, Bookmark, Lightbulb } from "lucide-react";
 import UserSidebar from '@/components/UserSidebar';
+import FeatureGuard from "@/components/FeatureGuard";
 
 export default function NetworkingSuggestionsPage() {
     const [industry, setIndustry] = useState("");
@@ -47,7 +48,8 @@ export default function NetworkingSuggestionsPage() {
             <UserSidebar onCollapseChange={setIsSidebarCollapsed} />
 
             <main className={`flex-1 overflow-y-auto transition-all duration-300 pt-20 lg:pt-8 ${isSidebarCollapsed ? "lg:ml-24" : "lg:ml-72"}`}>
-                <div className="p-4 sm:p-6 md:p-8 lg:px-12 max-w-7xl mx-auto space-y-8">
+                <FeatureGuard featureName="Learning Features">
+                    <div className="p-4 sm:p-6 md:p-8 lg:px-12 max-w-7xl mx-auto space-y-8">
                     
                     {/* Header */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-4">
@@ -247,6 +249,7 @@ export default function NetworkingSuggestionsPage() {
                     </div>
 
                 </div>
+                </FeatureGuard>
             </main>
         </div>
     );

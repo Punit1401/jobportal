@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import RecruiterSidebar from '@/components/RecruiterSidebar';
 import { useSession } from "next-auth/react";
+import Link from 'next/link';
 import { CheckCircle, Clock, AlertTriangle, Shield, TrendingUp, Users, Briefcase, Star } from 'lucide-react';
 
 export default function MyStatusPage() {
@@ -11,26 +12,29 @@ export default function MyStatusPage() {
     activeJobs: 0,
     totalApplicants: 0,
     shortlisted: 0,
-    interviews: 0
+    interviews: 0,
+    profileCompletion: 0,
+    hiringEfficiency: 0,
+    responseRate: 0
   });
   const [recruiter, setRecruiter] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
 
   useEffect(() => {
     const fetchStatus = async () => {
-        try {
-            const res = await fetch('/api/recruiter/status');
-            const data = await res.json();
-            if (data.ok) {
-                setStats(data.stats);
-                setRecruiter(data.recruiter);
-                setRecentActivity(data.recentActivity);
-            }
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
+      try {
+        const res = await fetch('/api/recruiter/status');
+        const data = await res.json();
+        if (data.ok) {
+          setStats(data.stats);
+          setRecruiter(data.recruiter);
+          setRecentActivity(data.recentActivity);
         }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchStatus();
   }, []);
@@ -38,10 +42,10 @@ export default function MyStatusPage() {
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
       <RecruiterSidebar activePage="status" />
-      
+
       <main className="flex-1 p-4 lg:p-8">
         <div className="max-w-7xl mx-auto space-y-8">
-          
+
           {/* Header */}
           <header>
             <h1 className="text-3xl font-black text-slate-900">My Status</h1>
@@ -88,7 +92,7 @@ export default function MyStatusPage() {
 
           {/* Detailed Status Sections */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
+
             {/* Recent Activity */}
             <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
               <h3 className="text-xl font-black text-slate-900 mb-6">Recent Activity</h3>
@@ -100,8 +104,8 @@ export default function MyStatusPage() {
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-900 text-sm">New application received</h4>
-                      <p className="text-xs text-slate-400 mb-1">{new Date(item.createdAt).toLocaleString()}</p>
-                      <p className="text-xs text-slate-500 font-medium">{item.jobId?.title || "Unknown Position"}</p>
+                      <p className="text-xs text-slate-400 mb-1">{new Date(item.appliedAt || item.createdAt).toLocaleString()}</p>
+                      <p className="text-xs text-slate-500 font-medium">{item.jobTitle || "Unknown Position"}</p>
                     </div>
                   </div>
                 )) : (
@@ -112,47 +116,47 @@ export default function MyStatusPage() {
 
             {/* Performance Insights */}
             <div className="bg-slate-900 rounded-[32px] p-8 text-white shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 opacity-10">
-                    <TrendingUp size={120} />
-                </div>
-                <div className="relative z-10">
-                    <h3 className="text-xl font-black mb-6">Performance Insights</h3>
-                    <div className="space-y-6">
-                        <div>
-                            <div className="flex justify-between text-sm mb-2">
-                                <span className="font-bold">Profile Completion</span>
-                                <span className="text-indigo-400">95%</span>
-                            </div>
-                            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                                <div className="h-full bg-indigo-500 w-[95%]"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div className="flex justify-between text-sm mb-2">
-                                <span className="font-bold">Hiring Efficiency</span>
-                                <span className="text-emerald-400">82%</span>
-                            </div>
-                            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                                <div className="h-full bg-emerald-500 w-[82%]"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div className="flex justify-between text-sm mb-2">
-                                <span className="font-bold">Response Rate</span>
-                                <span className="text-amber-400">70%</span>
-                            </div>
-                            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                                <div className="h-full bg-amber-500 w-[70%]"></div>
-                            </div>
-                        </div>
+              <div className="absolute top-0 right-0 p-8 opacity-10">
+                <TrendingUp size={120} />
+              </div>
+              <div className="relative z-10">
+                <h3 className="text-xl font-black mb-6">Performance Insights</h3>
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="font-bold">Profile Completion</span>
+                      <span className="text-indigo-400">{stats.profileCompletion || 0}%</span>
                     </div>
-                    <button 
-                        onClick={() => alert("Preparing your detailed performance analytics report. This may take a few moments...")}
-                        className="w-full mt-8 py-4 bg-white/10 hover:bg-white/20 rounded-2xl font-bold text-sm transition-all border border-white/10"
-                    >
-                        View Detailed Report
-                    </button>
+                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-500" style={{ width: `${stats.profileCompletion || 0}%` }}></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="font-bold">Hiring Efficiency</span>
+                      <span className="text-emerald-400">{stats.hiringEfficiency || 0}%</span>
+                    </div>
+                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-500" style={{ width: `${stats.hiringEfficiency || 0}%` }}></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="font-bold">Response Rate</span>
+                      <span className="text-amber-400">{stats.responseRate || 0}%</span>
+                    </div>
+                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-amber-500" style={{ width: `${stats.responseRate || 0}%` }}></div>
+                    </div>
+                  </div>
                 </div>
+                <Link
+                  href="/recruiter/analytics"
+                  className="w-full mt-8 py-4 bg-white/10 hover:bg-white/20 rounded-2xl font-bold text-sm transition-all border border-white/10 flex items-center justify-center"
+                >
+                  View Detailed Report
+                </Link>
+              </div>
             </div>
 
           </div>

@@ -38,7 +38,7 @@ const PlanSchema = new mongoose.Schema({
     enum: ["Basic", "Standard", "Premium", "Enterprise"],
     default: "Basic"
   },
-  userType: { type: String, enum: ["Recruiter", "ServiceProvider"], required: true },
+  userType: { type: String, enum: ["Recruiter", "ServiceProvider", "Candidate"], required: true },
   price: { type: Number, required: true },
   discountPercentage: { type: Number, default: 0 },
   currency: { type: String, default: "INR" },
@@ -47,7 +47,8 @@ const PlanSchema = new mongoose.Schema({
   // --- ADDED LIMITS OBJECT ---
   limits: {
     jobLimit: { type: Number, default: 0 }, // Recruiter માટે
-    leadLimit: { type: Number, default: 0 } // ServiceProvider માટે
+    leadLimit: { type: Number, default: 0 }, // ServiceProvider માટે
+    useLimit: { type: Number, default: 0 } // Candidate માટે
   },
   storage: {
     value: { type: Number, default: 0 },
@@ -60,4 +61,9 @@ const PlanSchema = new mongoose.Schema({
   description: { type: String }
 }, { timestamps: true });
 
-export default mongoose.models.Plan || mongoose.model("Plan", PlanSchema);
+// Clear the mongoose model if it already exists to ensure schema updates are applied in dev mode
+if (mongoose.models.Plan) {
+  delete mongoose.models.Plan;
+}
+
+export default mongoose.model("Plan", PlanSchema);

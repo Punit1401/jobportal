@@ -2,6 +2,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Sidebar from '@/components/Serviceprovidersidbar';
+import FeatureGuard from '@/components/FeatureGuard';
 import { Mail, Send, Layers, Users, Clock, History, Plus, ChevronRight, CheckCircle2, AlertCircle, Layout, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -12,6 +13,7 @@ function AutoMailerPageContent() {
     const [sending, setSending] = useState(false);
     const [mailingLists, setMailingLists] = useState([]);
     const [recentCampaigns, setRecentCampaigns] = useState([]);
+    const [stats, setStats] = useState({ totalContacts: 0, emailsSent: 0, openRate: 0 });
     const [templates, setTemplates] = useState([]);
     const [selectedTemplate, setSelectedTemplate] = useState("");
     const [scheduledTime, setScheduledTime] = useState("");
@@ -45,7 +47,10 @@ function AutoMailerPageContent() {
 
             const campRes = await fetch('/api/mailer/campaigns'); // Needs to be unified too
             const campData = await campRes.json();
-            if (campData.ok) setRecentCampaigns(campData.data);
+            if (campData.ok) {
+                setRecentCampaigns(campData.data);
+                if (campData.stats) setStats(campData.stats);
+            }
         } catch (error) {
             console.error(error);
         }
@@ -97,6 +102,7 @@ function AutoMailerPageContent() {
             <Sidebar activePage="mailer" />
             
             <main className="flex-1 p-4 lg:p-10">
+                <FeatureGuard featureName="Auto-Mailer System">
                 <div className="max-w-7xl mx-auto space-y-10">
                     
                     {/* Header */}
@@ -211,23 +217,23 @@ function AutoMailerPageContent() {
                                     <div className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/10">
                                         <div className="flex items-center gap-3">
                                             <Users size={18} className="text-indigo-400" />
-                                            <span className="text-sm font-bold">Total Members</span>
+                                            <span className="text-sm font-bold">Total Contacts</span>
                                         </div>
-                                        <span className="text-xl font-black">{mailingLists.reduce((acc, curr) => acc + (curr.members?.length || 0), 0)}</span>
+                                        <span className="text-xl font-black">{stats.totalContacts.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/10">
                                         <div className="flex items-center gap-3">
                                             <Mail size={18} className="text-emerald-400" />
-                                            <span className="text-sm font-bold">Campaigns Run</span>
+                                            <span className="text-sm font-bold">Emails Sent</span>
                                         </div>
-                                        <span className="text-xl font-black">{recentCampaigns.length}</span>
+                                        <span className="text-xl font-black">{stats.emailsSent.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/10">
                                         <div className="flex items-center gap-3">
                                             <Clock size={18} className="text-amber-400" />
-                                            <span className="text-sm font-bold">Scheduled</span>
+                                            <span className="text-sm font-bold">Open Rate</span>
                                         </div>
-                                        <span className="text-xl font-black">0</span>
+                                        <span className="text-xl font-black">{stats.openRate}%</span>
                                     </div>
                                 </div>
                             </div>
@@ -266,6 +272,7 @@ function AutoMailerPageContent() {
                         </div>
                     </div>
                 </div>
+                </FeatureGuard>
             </main>
         </div>
     );

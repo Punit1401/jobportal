@@ -2,18 +2,27 @@ import mongoose from "mongoose";
 
 const AdCampaignSchema = new mongoose.Schema(
   {
-    recruiterId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
+    userId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    recruiterId: { type: mongoose.Schema.Types.ObjectId },
+    userRole: { type: String, enum: ["recruiter", "serviceprovider"], required: true },
+    userEmail: { type: String, default: "" },
+    userName: { type: String, default: "" },
+    planId: { type: mongoose.Schema.Types.ObjectId, ref: "AdPlan" },
+    name: { type: String, required: true },
+    status: {
+      type: String,
+      enum: ["Active", "Paused", "Completed", "Expired"],
+      default: "Active",
     },
-    name: String,
-    status: { type: String, default: "Active" }, // Active, Paused, Completed
-    budget: Number,
+    budget: { type: Number, default: 0 },
+    amountPaid: { type: Number, default: 0 },
+    startDate: { type: Date, default: Date.now },
+    expiresAt: { type: Date },
     reach: { type: Number, default: 0 },
     clicks: { type: Number, default: 0 },
     impressions: { type: Number, default: 0 },
     jobId: { type: mongoose.Schema.Types.ObjectId, ref: "Job" },
+    serviceId: { type: mongoose.Schema.Types.ObjectId, ref: "ServiceForm" },
   },
   { timestamps: true }
 );

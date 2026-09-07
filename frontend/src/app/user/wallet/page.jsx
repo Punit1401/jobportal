@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Wallet as WalletIcon, Plus, ArrowUpRight, ArrowDownRight, Clock, Loader2, ShieldCheck, IndianRupee } from "lucide-react";
+import { Wallet as WalletIcon, Plus, ArrowUpRight, ArrowDownRight, Clock, Loader2, ShieldCheck, IndianRupee, X } from "lucide-react";
 import UserSidebar from "@/components/UserSidebar";
+import { useRazorpayTopup } from "@/hooks/useRazorpayTopup";
 
 export default function DigitalWalletPage() {
   const { data: session } = useSession();
@@ -14,8 +15,16 @@ export default function DigitalWalletPage() {
   const [loading, setLoading] = useState(true);
   
   const [amountToAdd, setAmountToAdd] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+
+  const { topup, processing: razorpayProcessing } = useRazorpayTopup((data) => {
+    setBalance(data.balance);
+    // Reload transactions to sync up
+    fetchWalletData();
+    setShowAddModal(false);
+    setAmountToAdd("");
+    alert("Money added to wallet successfully!");
+  });
 
   useEffect(() => {
     if (session) {
@@ -42,29 +51,7 @@ export default function DigitalWalletPage() {
   const handleAddMoney = async (e) => {
     e.preventDefault();
     if (!amountToAdd || isNaN(amountToAdd) || Number(amountToAdd) <= 0) return;
-
-    setIsProcessing(true);
-    try {
-      const res = await fetch("/api/user/wallet/add-money", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Number(amountToAdd), purpose: "Wallet Top-up" }),
-      });
-      const data = await res.json();
-      
-      if (data.success) {
-        setBalance(data.newBalance);
-        setTransactions(prev => [data.transaction, ...prev]);
-        setShowAddModal(false);
-        setAmountToAdd("");
-      } else {
-        alert(data.error);
-      }
-    } catch (error) {
-      console.error("Payment failed", error);
-    } finally {
-      setIsProcessing(false);
-    }
+    await topup(amountToAdd);
   };
 
   return (
@@ -204,16 +191,16 @@ export default function DigitalWalletPage() {
                   <div className="bg-indigo-50 p-4 rounded-xl mb-6 border border-indigo-100 flex gap-3">
                     <ShieldCheck size={24} className="text-indigo-600 shrink-0" />
                     <p className="text-xs font-bold text-indigo-900/70 leading-relaxed">
-                      Payments are secured via 256-bit encryption. For this demo, funds will be added instantly without a real gateway.
+                      Payments are processed securely via the Razorpay payment gateway with 256-bit encryption.
                     </p>
                   </div>
 
                   <button 
                     type="submit" 
-                    disabled={!amountToAdd || isProcessing}
+                    disabled={!amountToAdd || razorpayProcessing}
                     className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white py-5 rounded-2xl font-black text-lg transition-all active:scale-95 shadow-xl shadow-indigo-200 flex items-center justify-center gap-2"
                   >
-                    {isProcessing ? <Loader2 className="animate-spin" /> : "Proceed to Pay"}
+                    {razorpayProcessing ? <Loader2 className="animate-spin" /> : "Proceed to Pay"}
                   </button>
                 </form>
               </motion.div>

@@ -3,21 +3,14 @@ import { NextResponse } from "next/server";
 export async function POST(req) {
     try {
         const { skill, level } = await req.json();
-        const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+        
 
         if (!skill) {
             return NextResponse.json({ error: "Skill or Job Role is required" }, { status: 400 });
         }
 
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                "model": "google/gemini-2.0-flash-001",
-                "messages": [
+        const { fetchWithFallback } = require('@/lib/ai-fallback');
+    const result = await fetchWithFallback([
                     {
                         "role": "system",
                         "content": `You are an Technical Interviewer AI. 
@@ -39,13 +32,7 @@ export async function POST(req) {
                         "role": "user",
                         "content": `Generate a ${level || 'Intermediate'} level assessment test for: ${skill}`
                     }
-                ],
-                "response_format": { "type": "json_object" }
-            }),
-        });
-
-        const data = await response.json();
-        const result = JSON.parse(data.choices[0].message.content);
+                ]);;
 
         return NextResponse.json({ success: true, ...result });
     } catch (error) {

@@ -117,7 +117,7 @@ export default function Footer() {
         {/* Middle Section: Links Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-12 mb-16">
           <div>
-            <h5 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-6">Platform</h5>
+            <h3 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-6">Platform</h3>
             <ul className="space-y-4">
               {footerLinks.platform.map(link => (
                 <li key={link.name}><FooterLink href={link.href}>{link.name}</FooterLink></li>
@@ -125,7 +125,7 @@ export default function Footer() {
             </ul>
           </div>
           <div>
-            <h5 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-6">Support</h5>
+            <h3 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-6">Support</h3>
             <ul className="space-y-4">
               {footerLinks.support.map(link => (
                 <li key={link.name}><FooterLink href={link.href}>{link.name}</FooterLink></li>
@@ -133,7 +133,7 @@ export default function Footer() {
             </ul>
           </div>
           <div>
-            <h5 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-6">Services</h5>
+            <h3 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-6">Services</h3>
             <ul className="space-y-4">
               {footerLinks.services.map(link => (
                 <li key={link.name}><FooterLink href={link.href}>{link.name}</FooterLink></li>
@@ -144,7 +144,7 @@ export default function Footer() {
             <div className="bg-slate-900 rounded-[2rem] p-8 text-white relative overflow-hidden group">
               <Briefcase className="absolute -right-4 -bottom-4 text-white/5 group-hover:scale-125 transition-transform duration-700" size={120} />
               <p className="text-xs font-bold text-indigo-400 mb-2 uppercase tracking-widest">Hiring?</p>
-              <h4 className="text-lg font-black leading-tight mb-4">Post a job and find top talent today.</h4>
+              <h3 className="text-lg font-black leading-tight mb-4">Post a job and find top talent today.</h3>
               <Link href="../recruiter/register" className="inline-flex items-center gap-2 text-xs font-black bg-white text-slate-900 px-5 py-2.5 rounded-xl hover:bg-indigo-50 transition-colors">
                 Get Started <ArrowRight size={14} />
               </Link>
@@ -154,13 +154,13 @@ export default function Footer() {
 
         {/* Bottom Section: Copyright */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-10 border-t border-slate-50">
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">
+          <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">
             © {currentYear} CareerandNaukri. All Rights Reserved.
           </p>
           <div className="flex gap-8">
-            <Link href="#" className="text-slate-400 hover:text-indigo-600 text-[10px] font-black uppercase tracking-widest transition-colors">Terms</Link>
-            <Link href="#" className="text-slate-400 hover:text-indigo-600 text-[10px] font-black uppercase tracking-widest transition-colors">Privacy</Link>
-            <Link href="#" className="text-slate-400 hover:text-indigo-600 text-[10px] font-black uppercase tracking-widest transition-colors">Cookies</Link>
+            <Link href="#" className="text-slate-500 hover:text-indigo-600 text-[10px] font-black uppercase tracking-widest transition-colors">Terms</Link>
+            <Link href="#" className="text-slate-500 hover:text-indigo-600 text-[10px] font-black uppercase tracking-widest transition-colors">Privacy</Link>
+            <Link href="#" className="text-slate-500 hover:text-indigo-600 text-[10px] font-black uppercase tracking-widest transition-colors">Cookies</Link>
           </div>
         </div>
       </div>
@@ -171,7 +171,7 @@ export default function Footer() {
 // Helper Components
 function SocialIcon({ icon, href }) {
   return (
-    <a href={href} className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-indigo-600 hover:text-white hover:-translate-y-1 transition-all duration-300">
+    <a href={href} aria-label="Social Link" className="w-10 h-10 rounded-xl bg-slate-50 text-slate-500 flex items-center justify-center hover:bg-indigo-600 hover:text-white hover:-translate-y-1 transition-all duration-300">
       {icon}
     </a>
   );

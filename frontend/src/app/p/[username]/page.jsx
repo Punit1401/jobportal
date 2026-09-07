@@ -3,27 +3,36 @@ import connectMongo from "@/lib/mongodb";
 import Portfolio from "@/models/Portfolio";
 import Candidate from "@/models/Candidate";
 import { notFound } from "next/navigation";
-import { MapPin, Mail, ExternalLink, Briefcase, GraduationCap, Code, ArrowRight, Download, Github, Linkedin, CheckCircle2 } from "lucide-react";
-import Link from "next/link";
+import { MapPin, Mail, ExternalLink, Briefcase, GraduationCap, Code, ArrowRight, CheckCircle2 } from "lucide-react";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import WebsiteTemplateRenderer, { isNewWebsiteTemplate } from "@/components/website-templates/WebsiteTemplateRenderer";
 
 export default async function PublicPortfolioPage({ params }) {
   const { username } = await params;
   await connectMongo();
   const session = await getServerSession(authOptions);
 
-  const portfolio = await Portfolio.findOne({ username }).lean();
-  if (!portfolio) return notFound();
+  const rawPortfolio = await Portfolio.findOne({ username }).lean();
+  if (!rawPortfolio) return notFound();
 
-  if (!portfolio.isPublished) {
-    if (!session || session.user.id !== portfolio.userId.toString()) {
+  if (!rawPortfolio.isPublished) {
+    if (!session || session.user.id !== rawPortfolio.userId.toString()) {
       return notFound();
     }
   }
 
-  const candidate = await Candidate.findOne({ userId: portfolio.userId }).lean();
-  if (!candidate) return notFound();
+  const rawCandidate = await Candidate.findOne({ userId: rawPortfolio.userId }).lean();
+  if (!rawCandidate) return notFound();
+
+  const portfolio = JSON.parse(JSON.stringify(rawPortfolio));
+  const candidate = JSON.parse(JSON.stringify(rawCandidate));
+
+  const template = portfolio.template || "modern";
+
+  if (isNewWebsiteTemplate(template)) {
+    return <WebsiteTemplateRenderer candidate={candidate} portfolio={portfolio} />;
+  }
 
   // THEME VARIABLES
   const isDark = portfolio.theme === "dark";
@@ -44,7 +53,6 @@ export default async function PublicPortfolioPage({ params }) {
   const activeColor = portfolio.accentColor || 'indigo';
   const themeColors = cMap[activeColor];
   
-  const template = portfolio.template || "modern";
   const vs = portfolio.visibleSections || {};
 
   // =================== MINIMAL TEMPLATE ===================
@@ -100,7 +108,7 @@ export default async function PublicPortfolioPage({ params }) {
           
           <footer className="pt-20 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center opacity-50 text-sm">
             <span>© {new Date().getFullYear()} {candidate.fullName}</span>
-            <span>Made with JobConnectPro</span>
+            <span>Made with Career and Naukri</span>
           </footer>
         </div>
       </div>
@@ -327,7 +335,7 @@ export default async function PublicPortfolioPage({ params }) {
           </a>
         )}
         <p className="mt-12 text-sm font-bold opacity-40 uppercase tracking-widest">
-          Powered by JobConnectPro
+          Powered by Career and Naukri
         </p>
       </footer>
     </div>

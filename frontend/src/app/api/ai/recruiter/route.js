@@ -46,27 +46,17 @@ Company Description: ${recruiter.description || 'A professional company looking 
             Company Context: ${recruiterContext}`;
         }
 
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                "model": "google/gemini-2.0-flash-001",
-                "messages": [
-                    { "role": "system", "content": systemPrompt },
-                    { "role": "user", "content": input }
-                ],
-            }),
-        });
-
-        const data = await response.json();
-        const result = data.choices[0].message.content;
+        const { fetchWithFallback } = require('@/lib/ai-fallback');
+        const messages = [
+            { "role": "system", "content": systemPrompt },
+            { "role": "user", "content": input }
+        ];
+        
+        const result = await fetchWithFallback(messages);
 
         return NextResponse.json({ success: true, result });
     } catch (error) {
         console.error("Recruiter AI API Error:", error);
-        return NextResponse.json({ success: false, error: "Failed to generate AI response" }, { status: 500 });
+        return NextResponse.json({ success: false, error: "Failed to generate AI response: " + error.message }, { status: 500 });
     }
 }

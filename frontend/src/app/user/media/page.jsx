@@ -36,6 +36,16 @@ export default function MediaFeed() {
                 {post.content}
               </p>
 
+              {post.mediaUrl && (
+                <div className="mb-4 overflow-hidden rounded-[24px] border border-slate-100 bg-slate-50">
+                  <img
+                    src={post.mediaUrl}
+                    alt="Generated job poster"
+                    className="w-full h-auto block"
+                  />
+                </div>
+              )}
+
               <div className="flex items-center gap-6 pt-4 border-t border-slate-50">
                 <button className="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-red-500 transition-all">
                   <Heart size={18} /> {post.likes?.length || 0}

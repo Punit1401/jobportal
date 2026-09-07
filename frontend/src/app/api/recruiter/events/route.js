@@ -13,9 +13,23 @@ export async function GET(req) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const events = await Event.find({ recruiterId: session.user.id }).sort({ date: 1 });
+    const recruiterEvents = await Event.find({ recruiterId: session.user.id }).lean();
+    
+    // Determine the user's role to fetch the correct platform events
+    // For Service Provider, it should be "ServiceProvider". For Recruiter, "Recruiter".
+    let targetRole = "Recruiter";
+    if (session.user.role === "serviceprovider") targetRole = "ServiceProvider";
+    else if (session.user.role === "candidate") targetRole = "Candidate";
 
-    return NextResponse.json({ ok: true, data: events });
+    // Fetch platform events targeted at this role
+    const adminEvents = await Event.find({ 
+      targetAudience: { $in: [targetRole, "All"] },
+      createdBy: { $exists: true }
+    }).lean();
+
+    const allEvents = [...recruiterEvents, ...adminEvents].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    return NextResponse.json({ ok: true, data: allEvents });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

@@ -403,9 +403,9 @@ import { NextResponse } from "next/server";
 import connectMongo from "@/lib/mongodb";
 import Job from "@/models/Job";
 import Company from "@/models/Recruiter";
-import { getServerSession } from "next-auth"; 
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; 
-// import { checkLimit } from "@/lib/checkSubscription"; // પેમેન્ટ અત્યારે બંધ છે એટલે આની જરૂર નથી
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { checkLimit, incrementUsage } from "@/lib/checkSubscription";
 
 // ✅ GET: Fetch all active jobs for a recruiter (Filter by Session & Deadline)
 export async function GET(req) {
@@ -457,23 +457,39 @@ export async function POST(req) {
       );
     }
 
-    /* --- સબ્સ્ક્રિપ્શન લિમિટ ચેક કરવાનું લોજિક (કમેન્ટ કરેલું છે) ---
     try {
-      await checkLimit(company._id, "POST_JOB");
+      await checkLimit(session.user.email, "recruiter", "POST_JOB");
     } catch (limitErr) {
       return NextResponse.json(
-        { success: false, error: limitErr.message },
-        { status: 403 }
+        { success: false, error: limitErr.message, code: limitErr.code },
+        { status: limitErr.status || 403 }
       );
     }
-    */
 
     const skillsArray = body.requirements
       ? body.requirements.split(",").map(s => s.trim())
       : [];
 
+    const normalizedCategory = body.jobCategory || body.category || "";
+    const normalizedJobType = body.type || body.jobType || "";
+    const vacancies = Number(body.vacancies || 1);
+    const companyName = company.companyName || company.name || "";
+
     const newJob = await Job.create({
       ...body,
+      category: normalizedCategory,
+      jobCategory: normalizedCategory,
+      type: normalizedJobType,
+      jobType: normalizedJobType,
+      companyName,
+      company: companyName,
+      vacancies,
+      education: body.education || "All education levels",
+      gender: body.gender || "All genders",
+      shift: body.shift || "Day Shift",
+      workingDays: body.workingDays || "Flexible schedule",
+      published: body.published ?? true,
+      createdBy: session.user.email,
       skills: skillsArray,
       deadline: new Date(body.deadline),
       recruiterId: company._id.toString(),
@@ -481,11 +497,7 @@ export async function POST(req) {
       // નવા ફિલ્ડ્સ body માંથી ઓટોમેટિકલી અહીં આવી જશે
     });
 
-    /* --- જોબ સફળતાપૂર્વક ક્રિએટ થાય તો વપરાયેલી લિમિટમાં +1 કરવાનું લોજિક (કમેન્ટ કરેલું છે) ---
-    await Company.findByIdAndUpdate(company._id, {
-      $inc: { "subscription.usedJobs": 1 }
-    });
-    */
+    await incrementUsage(session.user.email, "recruiter", "POST_JOB");
 
     return NextResponse.json({ success: true, job: newJob }, { status: 201 });
   } catch (error) {

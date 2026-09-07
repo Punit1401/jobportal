@@ -5,7 +5,9 @@ import {
   Trash2, Users, Loader2, ChevronDown, ChevronUp, AlignLeft, 
   ListChecks, X, Send
 } from 'lucide-react';
+import Link from 'next/link';
 import RecruiterSidebar from '@/components/RecruiterSidebar';
+import FeatureGuard from '@/components/FeatureGuard';
 import { useSession } from "next-auth/react"; // Session ચેક કરવા માટે ઉમેર્યું
 
 export default function ManageJobs() {
@@ -69,7 +71,8 @@ export default function ManageJobs() {
       <RecruiterSidebar activePage="managejobs" />
       
       <main className="flex-1 w-full p-3 sm:p-6 lg:p-10">
-        <div className="max-w-5xl mx-auto">
+        <FeatureGuard featureName="Job Placements">
+        <div className="max-w-7xl mx-auto space-y-6 sm:space-y-10">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-10 gap-4 mt-12 md:mt-0">
             <div className="w-full sm:w-auto">
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Manage Jobs</h1>
@@ -105,6 +108,7 @@ export default function ManageJobs() {
             </div>
           )}
         </div>
+        </FeatureGuard>
       </main>
 
       {editingJob && (
@@ -163,7 +167,7 @@ function JobAccordionCard({ job, onDelete, onEdit }) {
           <div className="pt-6 border-t border-slate-100 grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-indigo-600 font-black text-xs uppercase tracking-[0.1em]"><AlignLeft size={16} /> Job Description</div>
-              <div className="bg-slate-50 p-5 rounded-[20px] border border-slate-100">
+              <div className="bg-slate-50 p-5 rounded-[20px] border border-slate-100 max-h-60 overflow-y-auto">
                 <p className="text-slate-600 text-sm leading-relaxed font-medium whitespace-pre-line">{job.description}</p>
               </div>
             </div>

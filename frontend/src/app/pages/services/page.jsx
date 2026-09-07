@@ -20,9 +20,44 @@ export default function PublicServiceExplorer() {
     try {
       const res = await fetch('/api/serviceprovider/serviceform?all=true');
       const data = await res.json();
-      if (data.success) {
-        setServices(data.services || []);
+      const rawServices = data.success ? (data.services || []) : [];
+
+      let promotedServices = [];
+      try {
+        const promoRes = await fetch('/api/advertising/promoted-services', { cache: "no-store" });
+        const promoData = await promoRes.json();
+        if (promoData.success && Array.isArray(promoData.services)) {
+          promotedServices = promoData.services;
+        }
+      } catch (e) {
+        console.error("Promoted services fetch error:", e);
       }
+
+      const promoOrder = new Map(promotedServices.map((p) => [p.serviceId, p.sortOrder]));
+
+      const activeServices = rawServices
+        .map((service) => {
+          const id = String(service._id);
+          const promo = promotedServices.find((p) => p.serviceId === id);
+          if (promo) {
+            return {
+              ...service,
+              isPromoted: true,
+              promotedPlanTitle: promo.planTitle,
+            };
+          }
+          return service;
+        })
+        .sort((a, b) => {
+          const aId = String(a._id);
+          const bId = String(b._id);
+          const aRank = promoOrder.has(aId) ? promoOrder.get(aId) : Number.MAX_SAFE_INTEGER;
+          const bRank = promoOrder.has(bId) ? promoOrder.get(bId) : Number.MAX_SAFE_INTEGER;
+          if (aRank !== bRank) return aRank - bRank;
+          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        });
+
+      setServices(activeServices);
     } catch (err) {
       console.error("Failed to load services", err);
     } finally {
@@ -71,10 +106,17 @@ export default function PublicServiceExplorer() {
                     </div>
                 </div>
 
-                <div className="flex justify-between items-start mb-6">
-                  <span className="px-4 py-1.5 bg-slate-50 text-slate-500 rounded-full text-[10px] font-black uppercase tracking-widest">
-                    {service.category}
-                  </span>
+                <div className="flex justify-between items-start mb-6 flex-wrap gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    <span className="px-4 py-1.5 bg-slate-50 text-slate-500 rounded-full text-[10px] font-black uppercase tracking-widest">
+                      {service.category}
+                    </span>
+                    {service.isPromoted && (
+                      <span className="px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 animate-pulse">
+                        Featured
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center text-emerald-600 font-black text-xl">
                     <IndianRupee size={18} />
                     <span>{service.price}</span>
@@ -124,7 +166,6 @@ export default function PublicServiceExplorer() {
             </button>
          </div>
       </section>
-      <Footer/>
     </div>
   );
 }

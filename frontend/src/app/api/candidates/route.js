@@ -470,6 +470,11 @@ export async function POST(req) {
       nonFormalEducations = JSON.parse(formData.get("nonFormalEducations") || "[]");
     } catch { }
 
+    let preferredJobTypes = [];
+    try {
+      preferredJobTypes = JSON.parse(formData.get("preferredJobTypes") || "[]");
+    } catch { }
+
     // ================= MAIN DATA =================
     const updateData = {
       userId: session.user.id,
@@ -480,9 +485,12 @@ export async function POST(req) {
       mobile: formData.get("mobile"),
       dob: formData.get("dob"),
       gender: formData.get("gender"),
+      religion: formData.get("religion"),
+      motherTongue: formData.get("motherTongue"),
       profession: formData.get("profession"),
       position: formData.get("position"),
-      Reference: formData.get("reference"), // FIX
+      reference: formData.get("reference"),
+      Reference: formData.get("reference"),
 
       // Address
       pincode: formData.get("pincode") || "",
@@ -506,6 +514,9 @@ export async function POST(req) {
       jobToDate: formData.get("jobToDate"),
       jobDescription: formData.get("jobDescription"),
       presentEmploymentStatus: formData.get("presentEmploymentStatus"),
+      preferredJobTypes,
+      placementLocation: formData.get("placementLocation"),
+      placementPincode: formData.get("placementPincode"),
       lastSalary: formData.get("lastSalary"),
       expectedSalary: formData.get("expectedSalary"),
       noticePeriod: formData.get("noticePeriod"),
@@ -552,7 +563,7 @@ export async function POST(req) {
     // ================= URGENT NOTIFICATION LOGIC (NO JOB STATUS) =================
     // Read from the first work experience entry since flat presentEmploymentStatus is no longer sent directly
     const firstWorkExp = workExperiences[0] || {};
-    const currentStatus = firstWorkExp.presentEmploymentStatus || formData.get("presentEmploymentStatus");
+    const currentStatus = formData.get("presentEmploymentStatus") || firstWorkExp.presentEmploymentStatus;
 
     // Sync legacy flat properties from arrays for backward compatibility
     updateData.currentCompanyName = updateData.currentCompanyName || firstWorkExp.currentCompanyName;

@@ -2,11 +2,11 @@
 // import connectMongo from "@/lib/mongodb";
 // import Plan from "@/models/Plan";
 
-// // ✅ GET: બધા પ્લાન્સ મેળવવા માટે
+// // ✅ GET: To get all plans
 // export async function GET() {
 //   try {
 //     await connectMongo();
-//     // displayOrder મુજબ સોર્ટ કરો, જો એ ના હોય તો કિંમત મુજબ (Price Ascending)
+//     // Sort by displayOrder, if not available then by price (Price Ascending)
 //     const plans = await Plan.find({}).sort({ displayOrder: 1, price: 1 });
 //     return NextResponse.json({ success: true, plans });
 //   } catch (error) {
@@ -14,13 +14,13 @@
 //   }
 // }
 
-// // ✅ POST: નવો પ્લાન બનાવવા માટે
+// // ✅ POST: To create a new plan
 // export async function POST(req) {
 //   try {
 //     await connectMongo();
 //     const body = await req.json();
 
-//     // બેઝિક વેલિડેશન
+//     // Basic validation
 //     if (!body.title || !body.price || !body.userType) {
 //       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
 //     }
@@ -32,7 +32,7 @@
 //   }
 // }
 
-// // ✅ DELETE: પ્લાન ડિલીટ કરવા માટે (આ નવું ઉમેર્યું છે)
+// // ✅ DELETE: To delete a plan (Newly added)
 // export async function DELETE(req) {
 //   try {
 //     await connectMongo();

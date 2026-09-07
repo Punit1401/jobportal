@@ -3,10 +3,41 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import connectMongo from "@/lib/mongodb";
 import UserFile from "@/models/UserFile";
+import User from "@/models/User";
+import StorageSettings from "@/models/StorageSettings";
 import fs from "fs";
 import path from "path";
 
-const MAX_STORAGE_BYTES = 50 * 1024 * 1024; // 50 MB
+const DEFAULT_ROOT_FOLDERS = [
+  "Resume & Portfolio",
+  "Personal Documents",
+  "Educational Certificates",
+  "Awards & Recognitions",
+  "Appointment & Experience Letters",
+];
+
+async function ensureDefaultFolders(userId) {
+  const existingFolders = await UserFile.find({
+    userId,
+    type: "folder",
+    parentId: null,
+  }).select("name");
+
+  const existingNames = new Set(existingFolders.map((folder) => folder.name));
+  const foldersToCreate = DEFAULT_ROOT_FOLDERS.filter((name) => !existingNames.has(name));
+
+  if (!foldersToCreate.length) return;
+
+  await UserFile.insertMany(
+    foldersToCreate.map((name) => ({
+      userId,
+      name,
+      type: "folder",
+      size: 0,
+      parentId: null,
+    }))
+  );
+}
 
 export async function GET(req) {
   try {
@@ -14,12 +45,19 @@ export async function GET(req) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     await connectMongo();
+    await ensureDefaultFolders(session.user.id);
     const files = await UserFile.find({ userId: session.user.id }).sort({ createdAt: -1 });
+
+    // Calculate dynamic storage limit
+    const settings = await StorageSettings.findOne() || { defaultCandidateSpaceMB: 200 };
+    const user = await User.findById(session.user.id);
+    const maxStorageMB = settings.defaultCandidateSpaceMB + (user?.purchasedStorageMB || 0);
+    const maxStorageBytes = maxStorageMB * 1024 * 1024;
 
     // Calculate total size
     const totalSize = files.reduce((acc, file) => acc + (file.size || 0), 0);
 
-    return NextResponse.json({ success: true, files, totalSize, maxStorage: MAX_STORAGE_BYTES });
+    return NextResponse.json({ success: true, files, totalSize, maxStorage: maxStorageBytes });
   } catch (error) {
     return NextResponse.json({ error: "Server Error" }, { status: 500 });
   }
@@ -55,11 +93,16 @@ export async function POST(req) {
       if (!file || typeof file !== "object") return NextResponse.json({ error: "File is required" }, { status: 400 });
 
       // Check storage limit securely
+      const settings = await StorageSettings.findOne() || { defaultCandidateSpaceMB: 200 };
+      const userProfile = await User.findById(session.user.id);
+      const maxStorageMB = settings.defaultCandidateSpaceMB + (userProfile?.purchasedStorageMB || 0);
+      const maxStorageBytes = maxStorageMB * 1024 * 1024;
+
       const allFiles = await UserFile.find({ userId: session.user.id });
       const currentStorage = allFiles.reduce((acc, f) => acc + (f.size || 0), 0);
       
-      if (currentStorage + file.size > MAX_STORAGE_BYTES) {
-        return NextResponse.json({ error: "Storage limit exceeded! You can only store up to 50MB." }, { status: 400 });
+      if (currentStorage + file.size > maxStorageBytes) {
+        return NextResponse.json({ error: `Storage limit exceeded! You can only store up to ${maxStorageMB}MB.` }, { status: 400 });
       }
 
       const buffer = Buffer.from(await file.arrayBuffer());

@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import Footer from "./Footer";
 
 export default function JobConnectPro() {
   const router = useRouter();
@@ -14,6 +13,8 @@ export default function JobConnectPro() {
     features_title: "Everything You Need to Succeed",
     cta_text: "Get Started Free",
   });
+  const [promoCampaign, setPromoCampaign] = useState(null);
+  const [showPromo, setShowPromo] = useState(false);
 
   // ડેટાબેઝમાંથી 2 લેટેસ્ટ જોબ્સ ફેચ કરવાનું લોજિક
   useEffect(() => {
@@ -29,6 +30,25 @@ export default function JobConnectPro() {
       }
     };
     fetchJobs();
+  }, []);
+
+  useEffect(() => {
+    const fetchPromo = async () => {
+      try {
+        const res = await fetch("/api/advertising/active", { cache: "no-store" });
+        const data = await res.json();
+        if (!data.success || !data.campaign) return;
+
+        const dismissedKey = `promo_dismissed_${data.campaign.id}`;
+        if (sessionStorage.getItem(dismissedKey) === "1") return;
+
+        setPromoCampaign(data.campaign);
+        setShowPromo(true);
+      } catch (error) {
+        console.error("Error loading promo campaign:", error);
+      }
+    };
+    fetchPromo();
   }, []);
 
   // SDK Integration
@@ -65,6 +85,53 @@ export default function JobConnectPro() {
           50% { transform: translateY(-20px); }
         }
       `}</style>
+
+      {showPromo && promoCampaign && (
+        <div className="fixed inset-0 z-[120] bg-slate-900/55 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-xl bg-white rounded-[32px] border border-slate-200 shadow-2xl p-8 relative">
+            <button
+              type="button"
+              onClick={() => {
+                sessionStorage.setItem(`promo_dismissed_${promoCampaign.id}`, "1");
+                setShowPromo(false);
+              }}
+              className="absolute right-4 top-4 w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 font-black text-slate-600"
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <p className="text-[11px] uppercase tracking-widest font-black text-indigo-700 mb-2">
+              Sponsored {promoCampaign.userRole === "recruiter" ? "Job" : "Service"}
+            </p>
+            <h3 className="text-2xl font-black text-slate-900">{promoCampaign.targetTitle}</h3>
+            <p className="text-slate-500 font-medium mt-2">{promoCampaign.targetSubtitle}</p>
+            <p className="text-xs text-slate-400 mt-3">
+              Campaign: {promoCampaign.planTitle}
+              {promoCampaign.expiresAt
+                ? ` • Ends ${new Date(promoCampaign.expiresAt).toLocaleDateString("en-IN")}`
+                : ""}
+            </p>
+            <div className="mt-6 flex gap-3">
+              <Link
+                href={promoCampaign.ctaHref}
+                className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-black"
+              >
+                View Details
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  sessionStorage.setItem(`promo_dismissed_${promoCampaign.id}`, "1");
+                  setShowPromo(false);
+                }}
+                className="px-6 py-3 rounded-xl bg-slate-100 text-slate-700 font-bold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* --- Hero Section --- */}
       <section className="relative pt-32 pb-20 overflow-hidden bg-slate-50">
@@ -150,7 +217,7 @@ export default function JobConnectPro() {
               <div key={i} className={`${feature.color} p-8 rounded-[32px] border border-slate-50 hover:scale-105 transition-transform cursor-default`}>
                 <div className="text-4xl mb-4">{feature.icon}</div>
                 <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed">{feature.desc}</p>
+                <p className="text-slate-700 text-sm leading-relaxed">{feature.desc}</p>
               </div>
             ))}
           </div>
@@ -176,7 +243,7 @@ export default function JobConnectPro() {
             </Link>
           </div>
           <div className="bg-white rounded-[40px] p-8 shadow-2xl border border-slate-100">
-            <h4 className="text-slate-400 font-bold text-xs uppercase tracking-widest mb-6">Recent Applicants</h4>
+            <h3 className="text-slate-500 font-bold text-xs uppercase tracking-widest mb-6">Recent Applicants</h3>
             <div className="space-y-4">
               {[
                 { name: "Sarah Kim", role: "UI Designer", match: "98%" },
@@ -185,8 +252,8 @@ export default function JobConnectPro() {
               ].map((c, i) => (
                 <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-indigo-100 rounded-full border border-indigo-200 flex items-center justify-center font-bold text-indigo-600">{c.name[0]}</div>
-                    <div><div className="font-bold text-sm text-slate-900">{c.name}</div><div className="text-xs text-slate-400 font-medium">{c.role}</div></div>
+                    <div className="w-10 h-10 bg-indigo-100 rounded-full border border-indigo-200 flex items-center justify-center font-bold text-indigo-700">{c.name[0]}</div>
+                    <div><div className="font-bold text-sm text-slate-900">{c.name}</div><div className="text-xs text-slate-500 font-medium">{c.role}</div></div>
                   </div>
                   <span className="text-indigo-600 font-bold text-xs bg-indigo-50 px-3 py-1.5 rounded-lg">{c.match} Match</span>
                 </div>
@@ -204,8 +271,8 @@ export default function JobConnectPro() {
               <h2 className="text-4xl font-extrabold mb-6">Enterprise Dashboard</h2>
               <p className="text-indigo-100 text-lg mb-10 leading-relaxed">Complete control over your recruitment ecosystem with analytics, security, and custom settings.</p>
               <div className="grid grid-cols-2 gap-6 mb-10">
-                <div className="bg-white/10 p-4 rounded-2xl border border-white/20"><div className="text-2xl font-bold">2.4M</div><div className="text-indigo-100 text-sm">Total Users</div></div>
-                <div className="bg-white/10 p-4 rounded-2xl border border-white/20"><div className="text-2xl font-bold">89K</div><div className="text-indigo-100 text-sm">Jobs Posted</div></div>
+                <div className="bg-white/10 p-4 rounded-2xl border border-white/20"><div className="text-2xl font-bold">2.4M</div><div className="text-white text-sm">Total Users</div></div>
+                <div className="bg-white/10 p-4 rounded-2xl border border-white/20"><div className="text-2xl font-bold">89K</div><div className="text-white text-sm">Jobs Posted</div></div>
               </div>
               <Link href="/demo" className="inline-block bg-white text-indigo-600 px-8 py-4 rounded-xl font-bold hover:bg-slate-50 transition-all">
                 Request Demo
@@ -237,7 +304,6 @@ export default function JobConnectPro() {
           </div>
         </div>
       </section>
-      <Footer/>
     </div>
   );
 }

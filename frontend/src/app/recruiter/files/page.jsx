@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import RecruiterSidebar from '@/components/RecruiterSidebar';
 import { Folder, File, Search, Plus, Grid, List, MoreVertical, Download, Trash2, ChevronRight, FileText, ImageIcon, Music, Video, ArrowLeft, HardDrive, AlertCircle } from 'lucide-react';
+import StoragePlansSection from '@/components/StoragePlansSection';
 
 export default function FilesPage() {
     const [viewMode, setViewMode] = useState("grid");
@@ -218,10 +219,9 @@ export default function FilesPage() {
                                 ></div>
                             </div>
                         </div>
-                        <div className="shrink-0">
-                            <button className="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all">
-                                Upgrade Storage
-                            </button>
+                        <div className="shrink-0 text-right">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
+                            <p className="text-sm font-black text-white">{storagePercent >= 100 ? "Full" : "Healthy"}</p>
                         </div>
                     </div>
 
@@ -288,6 +288,14 @@ export default function FilesPage() {
                                 <p className="text-slate-400 font-bold">This folder is empty.</p>
                             </div>
                         )}
+                        
+                        <StoragePlansSection 
+                            walletHref="/recruiter/wallet"
+                            onSuccess={(limit) => {
+                                setStorage((s) => ({ ...s, storageLimit: limit ?? s.storageLimit }));
+                                fetchFiles(currentFolder);
+                            }}
+                        />
                     </div>
 
                 </div>

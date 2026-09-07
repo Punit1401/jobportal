@@ -14,8 +14,11 @@ const CandidateSchema = new mongoose.Schema(
     mobile: String,
     dob: String,
     gender: String,
+    religion: String,
+    motherTongue: String,
     profession: String,
     position: String,
+    reference: String,
     Reference: String,
 
     // 🔹 Address
@@ -44,6 +47,9 @@ const CandidateSchema = new mongoose.Schema(
     jobToDate: String,
     jobDescription: String,
     presentEmploymentStatus: String,
+    preferredJobTypes: [String],
+    placementLocation: String,
+    placementPincode: String,
     lastSalary: String,
     expectedSalary: String,
     noticePeriod: String,
@@ -117,9 +123,84 @@ const CandidateSchema = new mongoose.Schema(
 
     // 🔹 New Array Structures
     savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: "Job" }],
+    followedCompanies: [{ type: mongoose.Schema.Types.ObjectId, ref: "Company" }],
+
+    // 🔹 AI Job Feed — saved aggregated jobs
+    savedAggregatedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: "AggregatedJob" }],
+
+    // 🔹 Schemes & Benefits — saved schemes
+    savedSchemes: [{ type: mongoose.Schema.Types.ObjectId, ref: "GovtResource" }],
+
+    // 🔹 AI Auto-Apply & Application Management (Module 2)
+    autoApplyPreferences: {
+      industries: [{ type: String }],
+      locations: [{ type: String }],
+      employmentTypes: [{ type: String }],
+      keywords: [{ type: String }],
+      minMatchScore: { type: Number, default: 40 },
+      enabled: { type: Boolean, default: false },
+    },
+    // Applications to aggregated/external jobs (internal jobs use the Application model).
+    jobApplications: [
+      {
+        jobId: { type: mongoose.Schema.Types.ObjectId, ref: "AggregatedJob" },
+        status: {
+          type: String,
+          enum: ["Saved", "Applied", "Viewed", "Interview", "Offer", "Rejected"],
+          default: "Applied",
+        },
+        matchScore: { type: Number },
+        mode: { type: String, enum: ["assisted", "one-click"], default: "assisted" },
+        coverLetter: { type: String },
+        notes: { type: String },
+        appliedAt: { type: Date, default: Date.now },
+        updatedAt: { type: Date, default: Date.now },
+      },
+    ],
+
+    // 🔹 Government Exam dashboard (Module 6)
+    savedExams: [{ type: mongoose.Schema.Types.ObjectId, ref: "Exam" }],
+    bookmarkedNotifications: [{ type: mongoose.Schema.Types.ObjectId, ref: "Notification" }],
+    examApplications: [
+      {
+        examId: { type: mongoose.Schema.Types.ObjectId, ref: "Exam" },
+        status: {
+          type: String,
+          enum: ["Interested", "Applied", "Admit Card", "Appeared", "Result", "Selected", "Not Selected"],
+          default: "Interested",
+        },
+        applicationNo: { type: String },
+        notes: { type: String },
+        updatedAt: { type: Date, default: Date.now },
+      },
+    ],
+    examPrep: [
+      {
+        examId: { type: mongoose.Schema.Types.ObjectId, ref: "Exam" },
+        progress: { type: Number, min: 0, max: 100, default: 0 },
+        checklist: [{ label: String, done: { type: Boolean, default: false } }],
+        updatedAt: { type: Date, default: Date.now },
+      },
+    ],
+    downloadHistory: [
+      {
+        examId: { type: mongoose.Schema.Types.ObjectId, ref: "Exam" },
+        label: String,
+        url: String,
+        downloadedAt: { type: Date, default: Date.now },
+      },
+    ],
+    examPreferences: {
+      states: [{ type: String }],
+      sources: [{ type: String }],
+      categories: [{ type: String }],
+      emailAlerts: { type: Boolean, default: true },
+    },
+
     workExperiences: [
       {
         currentCompanyName: String,
+        designation: String,
         jobDepartment: String,
         jobIndustry: String,
         jobFromDate: String,
@@ -153,6 +234,17 @@ const CandidateSchema = new mongoose.Schema(
         percentage: String,
       }
     ],
+    isPaid: { type: Boolean, default: false },
+    paidAt: { type: Date, default: null },
+    paymentAmount: { type: Number, default: 0 },
+    subscription: {
+      planId: { type: mongoose.Schema.Types.ObjectId, ref: "Plan", default: null },
+      status: { type: String, enum: ["Active", "Expired", "None"], default: "None" },
+      expiryDate: { type: Date, default: null },
+      subUsesUsed: { type: Number, default: 0 }
+    },
+    freeUsesCount: { type: Number, default: 0 },
+    freeUses: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
   { timestamps: true }
 );

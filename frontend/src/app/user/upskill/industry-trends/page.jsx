@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/UserSidebar';
 import { TrendingUp, Zap, Globe, Loader2, Search, Briefcase, X, Info } from 'lucide-react';
+import FeatureGuard from "@/components/FeatureGuard";
 
 export default function IndustryTrendsPage() {
   const [loading, setLoading] = useState(false);
@@ -42,7 +43,8 @@ export default function IndustryTrendsPage() {
       </div>
 
       <main className="flex-1 overflow-y-auto p-6 lg:p-10">
-        <div className="max-w-5xl mx-auto">
+        <FeatureGuard featureName="Learning Features">
+          <div className="max-w-5xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 pt-10 lg:pt-0">
             <div>
               <h1 className="text-4xl font-black text-slate-900 flex items-center gap-3 text-shadow-sm">
@@ -163,6 +165,7 @@ export default function IndustryTrendsPage() {
             </div>
           )}
         </div>
+        </FeatureGuard>
       </main>
 
       {/* DETAIL MODAL */}

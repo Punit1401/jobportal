@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import RecruiterSidebar from '@/components/RecruiterSidebar';
+import FeatureGuard from '@/components/FeatureGuard';
 import { Sparkles, Brain, FileText, Users, Target, MessageSquare, Loader2, Wand2, Send, CheckCircle2 } from 'lucide-react';
 
 export default function AIFeaturesPage() {
@@ -73,6 +74,7 @@ export default function AIFeaturesPage() {
             <RecruiterSidebar activePage="ai" />
             
             <main className="flex-1 p-4 lg:p-10">
+                <FeatureGuard featureName="AI Features">
                 <div className="max-w-7xl mx-auto space-y-10">
                     
                     {/* Header */}
@@ -164,6 +166,7 @@ export default function AIFeaturesPage() {
                     )}
 
                 </div>
+                </FeatureGuard>
             </main>
         </div>
     );

@@ -291,6 +291,7 @@ export default function ProfilePage() {
     serviceCategory: "",
     experience: "",
     location: "",
+    logo: "",
     gstNumber: "",
     aadharNumber: "",
     panNumber: "",
@@ -305,24 +306,23 @@ export default function ProfilePage() {
       if (!session?.user?.email) return; 
 
       try {
-        const response = await fetch(`/api/admin/serviceproviders?email=${session.user.email}`);
+        const response = await fetch('/api/serviceprovider/profile');
         if (!response.ok) throw new Error("Network response was not ok");
         
         const data = await response.json();
-        if (data.providers) {
-          const currentProfile = data.providers.find(p => p.email === session.user.email);
-          if (currentProfile) {
-            setProfile({
-              ...currentProfile,
-              whatsappNumber: currentProfile.whatsappNumber || "",
-              gstNumber: currentProfile.gstNumber || "",
-              aadharNumber: currentProfile.aadharNumber || "",
-              panNumber: currentProfile.panNumber || "",
-              aadharDoc: currentProfile.aadharDoc || "",
-              panDoc: currentProfile.panDoc || "",
-              gstDoc: currentProfile.gstDoc || ""
-            });
-          }
+        if (data.success && data.provider) {
+          const currentProfile = data.provider;
+          setProfile({
+            ...currentProfile,
+            whatsappNumber: currentProfile.whatsappNumber || "",
+            gstNumber: currentProfile.gstNumber || "",
+            aadharNumber: currentProfile.aadharNumber || "",
+            panNumber: currentProfile.panNumber || "",
+            aadharDoc: currentProfile.aadharDoc || "",
+            panDoc: currentProfile.panDoc || "",
+            gstDoc: currentProfile.gstDoc || "",
+            logo: currentProfile.logo || ""
+          });
         }
       } catch (error) {
         console.error("Failed to fetch profile", error);
@@ -413,8 +413,17 @@ export default function ProfilePage() {
           {/* --- PROFILE HEADER --- */}
           <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 border border-slate-100 shadow-sm relative overflow-hidden">
             <div className="flex flex-col md:flex-row items-center md:items-start lg:items-center gap-6 md:gap-8 relative z-10">
-              <div className="w-28 h-28 md:w-32 md:h-32 rounded-[2rem] md:rounded-[2.5rem] bg-indigo-50 border-4 border-white shadow-xl overflow-hidden">
-                <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${profile.fullName || 'User'}`} alt="profile" className="w-full h-full object-cover" />
+              <div className="relative group shrink-0">
+                <div className="w-28 h-28 md:w-32 md:h-32 rounded-[2rem] md:rounded-[2.5rem] bg-indigo-50 border-4 border-white shadow-xl overflow-hidden">
+                  <img src={profile.logo || `https://api.dicebear.com/7.x/initials/svg?seed=${profile.fullName || 'User'}`} alt="profile" className="w-full h-full object-cover" />
+                </div>
+                {isEditing && (
+                  <label className="absolute inset-0 bg-slate-900/60 rounded-[2rem] md:rounded-[2.5rem] flex flex-col items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                    <Upload size={20} className="text-white" />
+                    <span className="text-[9px] font-black uppercase text-white mt-1">Logo</span>
+                    <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, 'logo')} />
+                  </label>
+                )}
               </div>
 
               <div className="flex-1 w-full text-center md:text-left">

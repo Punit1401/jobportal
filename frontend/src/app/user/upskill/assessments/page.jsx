@@ -1,7 +1,8 @@
 "use client";
 import React, { useState } from "react";
-import { ClipboardCheck, Sparkles, Trophy, AlertCircle, Loader2, ArrowRight, CheckCircle2, XCircle, RotateCcw, Brain } from "lucide-react";
+import { ClipboardCheck, Sparkles, Trophy, AlertCircle, Loader2, ArrowRight, CheckCircle2, XCircle, RotateCcw, Brain, Download, Activity } from "lucide-react";
 import UserSidebar from '@/components/UserSidebar';
+import FeatureGuard from "@/components/FeatureGuard";
 
 export default function AssessmentsPage() {
     const [skill, setSkill] = useState("");
@@ -11,6 +12,11 @@ export default function AssessmentsPage() {
     const [userAnswers, setUserAnswers] = useState({});
     const [showResults, setShowResults] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const startAssessment = async (e) => {
         if (e) e.preventDefault();
@@ -54,25 +60,66 @@ export default function AssessmentsPage() {
     };
 
     return (
-        <div className="flex h-screen bg-[#FDFEFF] overflow-hidden">
-            <UserSidebar onCollapseChange={setIsSidebarCollapsed} />
+        <div className="flex h-screen bg-[#FDFEFF] overflow-hidden print:overflow-visible print:h-auto">
+            <style jsx global>{`
+                @media print {
+                    @page { 
+                        margin: 0;
+                        size: auto;
+                    }
+                    body { 
+                        margin: 0;
+                        padding: 20mm;
+                        background: white !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    .print-hidden, nav, aside, footer, button, .no-print, [role="button"] { 
+                        display: none !important; 
+                    }
+                    .print-only { display: block !important; }
+                    main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+                }
+                .print-only { display: none; }
+            `}</style>
 
-            <main className={`flex-1 overflow-y-auto transition-all duration-300 pt-20 lg:pt-8 ${isSidebarCollapsed ? "lg:ml-24" : "lg:ml-72"}`}>
-                <div className="p-4 sm:p-6 md:p-8 lg:px-12 max-w-5xl mx-auto space-y-8">
-                    
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-4">
-                        <div>
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 mb-4">
-                                <Brain size={14} className="text-indigo-600" />
-                                <span className="text-xs font-bold text-indigo-700 tracking-wider uppercase">AI Skill Validator</span>
+            <div className="print-hidden">
+                <UserSidebar onCollapseChange={setIsSidebarCollapsed} />
+            </div>
+
+            <main className={`flex-1 overflow-y-auto transition-all duration-300 pt-20 lg:pt-8 print:pt-0 print:ml-0 ${isSidebarCollapsed ? "lg:ml-24" : "lg:ml-72"}`}>
+                <FeatureGuard featureName="Interview Preparation">
+                    <div className="p-4 sm:p-6 md:p-8 lg:px-12 max-w-5xl mx-auto space-y-8 print:max-w-none print:p-0">
+
+                    {/* Report Header (Print Only) */}
+                    <div className="hidden print:block mb-10 border-b-4 border-indigo-600 pb-6">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h1 className="text-4xl font-black text-slate-900 mb-2">Skill Assessment Report</h1>
+                                <p className="text-slate-500 font-bold uppercase tracking-widest text-sm">Validated by Career&Naukari AI</p>
                             </div>
-                            <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">
-                                Assessments & Tests
-                            </h1>
-                            <p className="text-slate-500 font-medium mt-3 max-w-2xl text-lg">
-                                Validate your expertise with AI-generated technical tests. Get instant feedback and identify areas for improvement.
-                            </p>
+                            <div className="text-right">
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-tighter">Issue Date</p>
+                                <p className="font-bold text-slate-900">{mounted ? new Date().toLocaleDateString() : ""}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="print-hidden">
+                        {/* Header */}
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-4">
+                            <div>
+                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 mb-4">
+                                    <Brain size={14} className="text-indigo-600" />
+                                    <span className="text-xs font-bold text-indigo-700 tracking-wider uppercase">AI Skill Validator</span>
+                                </div>
+                                <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">
+                                    Assessments & Tests
+                                </h1>
+                                <p className="text-slate-500 font-medium mt-3 max-w-2xl text-lg">
+                                    Validate your expertise with AI-generated technical tests. Get instant feedback and identify areas for improvement.
+                                </p>
+                            </div>
                         </div>
                     </div>
 
@@ -89,8 +136,17 @@ export default function AssessmentsPage() {
 
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Skill / Job Role</label>
-                                        <input 
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 flex justify-between items-center">
+                                            <span>Skill / Job Role</span>
+                                            {/* <button 
+                                                type="button" 
+                                                onClick={() => setSkill("Psychometric & Behavioral Analysis")}
+                                                className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md hover:bg-indigo-100 flex items-center gap-1"
+                                            >
+                                                <Activity size={12} /> Auto-fill Psychometric
+                                            </button> */}
+                                        </label>
+                                        <input
                                             type="text"
                                             value={skill}
                                             onChange={(e) => setSkill(e.target.value)}
@@ -204,28 +260,43 @@ export default function AssessmentsPage() {
                                         </button>
                                     </div>
                                 ) : (
-                                    <div className="mt-16 pt-10 border-t border-slate-100">
-                                        <div className="bg-slate-900 rounded-[2rem] p-10 text-white flex flex-col md:flex-row items-center justify-between gap-10 overflow-hidden relative">
-                                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+                                    <div className="mt-16 pt-10 border-t border-slate-100 print:mt-10">
+                                        <div className="bg-slate-900 rounded-[2rem] p-10 text-white flex flex-col md:flex-row items-center justify-between gap-10 overflow-hidden relative print:bg-slate-100 print:text-slate-900 print:border-2 print:border-slate-200">
+                                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl print:hidden"></div>
                                             <div className="relative z-10 text-center md:text-left">
-                                                <h4 className="text-indigo-400 font-black uppercase tracking-widest text-xs mb-3">Assessment Summary</h4>
+                                                <h4 className="text-indigo-400 font-black uppercase tracking-widest text-xs mb-3 print:text-indigo-600">Assessment Summary</h4>
                                                 <p className="text-4xl font-black mb-4">You scored {calculateScore()} out of {testData.questions.length}</p>
-                                                <p className="text-slate-400 font-medium text-lg max-w-md">
-                                                    {calculateScore() === testData.questions.length 
-                                                        ? "Perfect! You have a strong grasp of this topic." 
+                                                <p className="text-slate-400 font-medium text-lg max-w-md print:text-slate-600">
+                                                    {calculateScore() === testData.questions.length
+                                                        ? "Perfect! You have a strong grasp of this topic."
                                                         : "Great effort! Review the explanations above to strengthen your knowledge."}
                                                 </p>
                                             </div>
-                                            <div className="relative z-10 flex flex-col gap-4">
-                                                <div className="w-32 h-32 bg-white/10 rounded-full flex items-center justify-center border-4 border-white/20">
+                                            <div className="relative z-10 flex flex-col gap-4 print:hidden">
+                                                <div className="w-32 h-32 bg-white/10 rounded-full flex items-center justify-center border-4 border-white/20 mx-auto md:mx-0">
                                                     <Trophy className="text-yellow-400" size={60} />
                                                 </div>
-                                                <button
-                                                    onClick={() => setTestData(null)}
-                                                    className="flex items-center justify-center gap-2 text-sm font-black uppercase tracking-widest text-indigo-300 hover:text-white transition-all"
-                                                >
-                                                    <RotateCcw size={16} /> Retake Test
-                                                </button>
+                                                <div className="flex flex-col gap-2">
+                                                    <button
+                                                        onClick={() => window.print()}
+                                                        className="flex items-center justify-center gap-2 bg-white text-slate-900 px-4 py-2 rounded-xl text-sm font-black uppercase tracking-widest hover:bg-indigo-50 transition-all shadow-md"
+                                                    >
+                                                        <Download size={16} /> Download Report
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setTestData(null)}
+                                                        className="flex items-center justify-center gap-2 text-sm font-black uppercase tracking-widest text-indigo-300 hover:text-white transition-all mt-2"
+                                                    >
+                                                        <RotateCcw size={16} /> Retake Test
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            {/* Print Only Score Badge */}
+                                            <div className="hidden print:block text-center">
+                                                <div className="text-6xl font-black text-indigo-600">
+                                                    {Math.round((calculateScore() / testData.questions.length) * 100)}%
+                                                </div>
+                                                <div className="text-xs font-black uppercase tracking-widest text-slate-400">Total Proficiency</div>
                                             </div>
                                         </div>
                                     </div>
@@ -234,6 +305,7 @@ export default function AssessmentsPage() {
                         </div>
                     )}
                 </div>
+                </FeatureGuard>
             </main>
         </div>
     );

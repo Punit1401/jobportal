@@ -5,6 +5,7 @@ import ServiceProvider from "@/models/serviceprovider";
 import Candidate from "@/models/Candidate";
 import CandidateJob from "@/models/CandidateJob";
 import AdminModuleItem from "@/models/AdminModuleItem";
+import ContactEnquiry from "@/models/ContactEnquiry";
 
 export async function GET() {
   try {
@@ -24,6 +25,9 @@ export async function GET() {
 
     // 5. Fetch Manual Contacts
     const manualContacts = await AdminModuleItem.find({ moduleKey: "contact-management" }).lean();
+
+    // 6. Fetch Contact Enquiries
+    const enquiries = await ContactEnquiry.find({}).lean();
 
     const contactsMap = new Map();
 
@@ -45,10 +49,25 @@ export async function GET() {
           source: data.source || "N/A",
           location: data.location || "N/A",
           details: data.details || {},
-          createdAt: data.createdAt || new Date()
+          createdAt: data.createdAt || new Date(),
+          status: data.status || "N/A"
         });
       }
     };
+
+    // Process Enquiries
+    enquiries.forEach(e => {
+      addContact(e.email, e.phone, {
+        name: e.name,
+        role: "Enquiry",
+        company: "N/A",
+        source: "Contact Us Form",
+        location: "N/A",
+        createdAt: e.createdAt,
+        status: e.status,
+        details: { message: e.message, subject: e.subject }
+      });
+    });
 
     // Process Manual Contacts
     manualContacts.forEach(mc => {

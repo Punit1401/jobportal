@@ -38,11 +38,46 @@ export default function CandidateServiceView() {
 
   const fetchServices = async () => {
     try {
-      const res = await fetch('/api/serviceprovider/serviceform?all=true');
+      const res = await fetch('/api/serviceprovider/serviceform?all=true', { cache: "no-store" });
       const data = await res.json();
-      if (data.success) {
-        setServices(data.services || []);
+      const rawServices = data.success ? (data.services || []) : [];
+
+      let promotedServices = [];
+      try {
+        const promoRes = await fetch('/api/advertising/promoted-services', { cache: "no-store" });
+        const promoData = await promoRes.json();
+        if (promoData.success && Array.isArray(promoData.services)) {
+          promotedServices = promoData.services;
+        }
+      } catch (e) {
+        console.error("Promoted services fetch error:", e);
       }
+
+      const promoOrder = new Map(promotedServices.map((p) => [p.serviceId, p.sortOrder]));
+
+      const activeServices = rawServices
+        .map((service) => {
+          const id = String(service._id);
+          const promo = promotedServices.find((p) => p.serviceId === id);
+          if (promo) {
+            return {
+              ...service,
+              isPromoted: true,
+              promotedPlanTitle: promo.planTitle,
+            };
+          }
+          return service;
+        })
+        .sort((a, b) => {
+          const aId = String(a._id);
+          const bId = String(b._id);
+          const aRank = promoOrder.has(aId) ? promoOrder.get(aId) : Number.MAX_SAFE_INTEGER;
+          const bRank = promoOrder.has(bId) ? promoOrder.get(bId) : Number.MAX_SAFE_INTEGER;
+          if (aRank !== bRank) return aRank - bRank;
+          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        });
+
+      setServices(activeServices);
     } catch (err) {
       console.error("Failed to load services", err);
     } finally {
@@ -54,7 +89,7 @@ export default function CandidateServiceView() {
   const fetchProviderReviews = async (providerEmail) => {
     setLoadingReviews(true);
     try {
-      const res = await fetch(`/api/reviews?targetId=${providerEmail}`);
+      const res = await fetch(`/api/reviews?targetId=${providerEmail}&reviewType=service`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) {
         setExistingReviews(data.reviews || []);
@@ -90,7 +125,8 @@ export default function CandidateServiceView() {
           reviewerName: session.user.name || "User",
           targetType: "provider",
           rating,
-          comment
+          comment,
+          reviewType: "service"
         })
       });
 
@@ -129,10 +165,17 @@ export default function CandidateServiceView() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
               {services.map((service) => (
                 <div key={service._id} className="bg-white rounded-[35px] border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group overflow-hidden">
-                  <div className="p-6 pb-0 flex justify-between items-start">
-                    <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
-                      <Tag size={12} /> {service.category}
-                    </span>
+                  <div className="p-6 pb-0 flex justify-between items-start flex-wrap gap-2">
+                    <div className="flex gap-2 flex-wrap">
+                      <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                        <Tag size={12} /> {service.category}
+                      </span>
+                      {service.isPromoted && (
+                        <span className="px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 animate-pulse">
+                          Featured
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center text-emerald-600 font-black text-xl">
                       <IndianRupee size={20} />
                       <span>{service.price}</span>
@@ -153,9 +196,15 @@ export default function CandidateServiceView() {
 
                   <div className="p-6 bg-slate-50/50 border-t border-slate-50">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
-                        {service.providerName?.charAt(0)}
-                      </div>
+                      {service.providerLogo ? (
+                        <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 overflow-hidden shrink-0 shadow-sm">
+                          <img src={service.providerLogo} alt="provider logo" className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shrink-0">
+                          {service.providerName?.charAt(0)}
+                        </div>
+                      )}
                       <div className="flex-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Provider</p>
                         <p className="text-sm font-bold text-slate-700 truncate">{service.providerName}</p>

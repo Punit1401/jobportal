@@ -1,5 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import {
   Building2, Globe, MapPin, Edit3, Save, ExternalLink,
   Users, Calendar, Briefcase, Camera, Loader2, X, Mail, Phone, LayoutGrid,
@@ -9,9 +11,13 @@ import RecruiterSidebar from '@/components/RecruiterSidebar';
 import ReviewSystem from '@/components/ReviewSystem';
 
 export default function CompanyProfile() {
+  const { data: session, status: authStatus } = useSession();
+  const router = useRouter();
+
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [company, setCompany] = useState(null);
+  const [statusMessage, setStatusMessage] = useState("");
 
   const [industryOptions, setIndustryOptions] = useState([]);
   const [departmentOptions, setDepartmentOptions] = useState([]);
@@ -48,6 +54,8 @@ export default function CompanyProfile() {
     ownerName: "",
     ownerNumber: "",
     ownerEmail: "",
+    ownerReligion: "",
+    ownerMotherTongue: "",
     gstNo: "",
     gstFile: "",
     companyLicense: "",
@@ -73,17 +81,27 @@ export default function CompanyProfile() {
     }
   };
 
-  const fetchCompanyData = async () => {
-    try {
-      const storedEmail = localStorage.getItem("recruiterEmail");
+  const fetchCompanyData = useCallback(async (email) => {
+    if (!email) {
+      setLoading(false);
+      setStatusMessage("Could not load profile. Please sign in again.");
+      return;
+    }
 
-      if (!storedEmail) {
-        console.error("No email found in localStorage");
+    try {
+      setLoading(true);
+      setStatusMessage("");
+
+      const res = await fetch(
+        `/api/recruiter/register?action=get-profile&email=${encodeURIComponent(email)}`,
+        { cache: "no-store" }
+      );
+      const result = await res.json();
+
+      if (!res.ok) {
+        setStatusMessage(result.error || "Failed to load profile.");
         return;
       }
-
-      const res = await fetch(`/api/recruiter/register?action=get-profile&email=${storedEmail}`);
-      const result = await res.json();
 
       if (result.data) {
         setCompany(result.data);
@@ -115,6 +133,8 @@ export default function CompanyProfile() {
           ownerName: result.data.ownerName || "",
           ownerNumber: result.data.ownerNumber || "",
           ownerEmail: result.data.ownerEmail || "",
+          ownerReligion: result.data.ownerReligion || "",
+          ownerMotherTongue: result.data.ownerMotherTongue || "",
           gstNo: result.data.gstNo || "",
           gstFile: result.data.gstFile || "",
           companyLicense: result.data.companyLicense || "",
@@ -127,18 +147,28 @@ export default function CompanyProfile() {
             ? result.data.specialties.join(", ")
             : (result.data.specialties || "")
         });
+      } else {
+        setStatusMessage("Profile not found. Please complete your details below.");
+        setIsEditing(true);
       }
     } catch (err) {
-      console.error("Error fetching company data:", err);
+      console.error("Profile fetch error:", err);
+      setStatusMessage("Something went wrong while loading your profile.");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchDropdowns();
-    fetchCompanyData();
-  }, []);
+    if (authStatus === "unauthenticated") {
+      router.push("/login");
+      return;
+    }
+    if (authStatus === "authenticated" && session?.user?.email) {
+      fetchDropdowns();
+      fetchCompanyData(session.user.email);
+    }
+  }, [authStatus, session?.user?.email, router, fetchCompanyData]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -168,14 +198,23 @@ export default function CompanyProfile() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const email = session?.user?.email;
+    if (!email) {
+      alert("Please sign in to save your profile.");
+      router.push("/login");
+      return;
+    }
+
     setLoading(true);
     try {
-      const storedEmail = localStorage.getItem("recruiterEmail");
-
       const dataToSend = {
         action: "update-profile",
-        email: storedEmail,
+        email,
         ...formData,
+        specialties: formData.specialties
+          ? formData.specialties.split(",").map((s) => s.trim()).filter(Boolean)
+          : [],
       };
 
       const res = await fetch("/api/recruiter/register", {
@@ -187,11 +226,12 @@ export default function CompanyProfile() {
       const result = await res.json();
 
       if (res.ok) {
-        await fetchCompanyData();
+        await fetchCompanyData(email);
         setIsEditing(false);
-        alert("Profile Updated in Recruiter Model!");
+        setStatusMessage("Profile saved successfully. Admin will verify your account.");
+        alert("Profile updated successfully!");
       } else {
-        alert(result.error || "Failed to save");
+        alert(result.error || "Failed to save profile.");
       }
     } catch (err) {
       alert("Error: " + err.message);
@@ -200,11 +240,13 @@ export default function CompanyProfile() {
     }
   };
 
-  if (loading && !company) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Loader2 className="animate-spin text-indigo-600" size={48} />
-    </div>
-  );
+  if ((loading && !company) || authStatus === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="animate-spin text-indigo-600" size={48} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-[#f3f2ef]">
@@ -212,6 +254,12 @@ export default function CompanyProfile() {
 
       <main className="flex-1 pb-10 overflow-y-auto">
         <div className="max-w-5xl mx-auto px-4 md:px-8 mt-6">
+
+          {statusMessage && (
+            <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-100 text-amber-900 text-sm font-bold">
+              {statusMessage}
+            </div>
+          )}
 
           {(!company || isEditing) ? (
             <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
@@ -375,6 +423,14 @@ export default function CompanyProfile() {
                 <div className="md:col-span-2">
                   <label className="text-[11px] font-black uppercase text-slate-400 mb-1 block">Owner Email <span className="text-red-500">*</span></label>
                   <input required type="email" name="ownerEmail" value={formData.ownerEmail} onChange={handleChange} className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold" />
+                </div>
+                <div>
+                  <label className="text-[11px] font-black uppercase text-slate-400 mb-1 block">Owner Religion</label>
+                  <input name="ownerReligion" value={formData.ownerReligion} onChange={handleChange} placeholder="Religion" className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold" />
+                </div>
+                <div>
+                  <label className="text-[11px] font-black uppercase text-slate-400 mb-1 block">Owner Mother Tongue</label>
+                  <input name="ownerMotherTongue" value={formData.ownerMotherTongue} onChange={handleChange} placeholder="Mother Tongue" className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold" />
                 </div>
 
                 {/* Company Overview */}
@@ -557,6 +613,8 @@ export default function CompanyProfile() {
                         <p className="text-md font-black text-slate-800">{company.ownerName || "Not set"}</p>
                         <p className="text-sm font-bold text-slate-500 flex items-center gap-2"><Phone size={14} className="text-indigo-500" /> {company.ownerNumber || "N/A"}</p>
                         <p className="text-sm font-bold text-slate-500 flex items-center gap-2"><Mail size={14} className="text-indigo-500" /> {company.ownerEmail || "N/A"}</p>
+                        <p className="text-sm font-bold text-slate-500">Religion: {company.ownerReligion || "N/A"}</p>
+                        <p className="text-sm font-bold text-slate-500">Mother Tongue: {company.ownerMotherTongue || "N/A"}</p>
                       </div>
                     </div>
                   </div>

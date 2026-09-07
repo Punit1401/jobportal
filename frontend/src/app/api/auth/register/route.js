@@ -6,9 +6,22 @@ import User from "@/models/User";
 import OTP from "@/models/EmailOTP";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
+import rateLimit from "@/lib/rate-limit";
+
+const limiter = rateLimit({
+  interval: 60 * 1000,
+  uniqueTokenPerInterval: 500,
+});
 
 export async function POST(req) {
   try {
+    const ip = req.headers.get("x-forwarded-for") || req.ip || "127.0.0.1";
+    try {
+      await limiter.check(10, ip); // Max 10 requests per IP per minute
+    } catch {
+      return Response.json({ error: "Too many requests. Please try again later." }, { status: 429 });
+    }
+
     await connectMongo();
 
     const { action, name, email, password, acceptedTerms, otp } = await req.json();

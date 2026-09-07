@@ -15,7 +15,7 @@ export async function GET(req) {
     const recruiter = await Recruiter.findOne({ email: session.user.email });
     if (!recruiter) return NextResponse.json({ error: "Recruiter not found" }, { status: 404 });
 
-    const templates = await MailTemplate.find({ recruiterId: recruiter._id }).sort({ createdAt: -1 });
+    const templates = await MailTemplate.find({ ownerId: recruiter._id, ownerRole: "recruiter" }).sort({ createdAt: -1 });
     return NextResponse.json({ ok: true, data: templates });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -37,13 +37,13 @@ export async function POST(req) {
     if (id) {
         // Update existing
         template = await MailTemplate.findOneAndUpdate(
-            { _id: id, recruiterId: recruiter._id },
+            { _id: id, ownerId: recruiter._id, ownerRole: "recruiter" },
             { title, subject, content },
             { new: true }
         );
     } else {
         // Create new
-        template = await MailTemplate.create({ recruiterId: recruiter._id, title, subject, content });
+        template = await MailTemplate.create({ ownerId: recruiter._id, ownerRole: "recruiter", title, subject, content });
     }
 
     return NextResponse.json({ ok: true, data: template });
@@ -67,7 +67,7 @@ export async function DELETE(req) {
     if (!recruiter) return NextResponse.json({ error: "Recruiter not found" }, { status: 404 });
 
     const { id } = await req.json();
-    await MailTemplate.deleteOne({ _id: id, recruiterId: recruiter._id });
+    await MailTemplate.deleteOne({ _id: id, ownerId: recruiter._id, ownerRole: "recruiter" });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });

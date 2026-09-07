@@ -8,15 +8,8 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: "Resume and Job Description are required" }, { status: 400 });
     }
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        "model": "google/gemini-2.0-flash-001",
-        "messages": [
+    const { fetchWithFallback } = require('@/lib/ai-fallback');
+    const content = await fetchWithFallback([
           {
             "role": "system",
             "content": "You are an expert HR Interviewer. Based on the provided Resume and Job Description, generate 10 to 15 highly relevant interview questions. Include a mix of technical, behavioral (STAR method), and situational questions. For each question, provide a detailed 'bestAnswer'. Return ONLY a valid JSON array of objects without any markdown formatting."
@@ -25,19 +18,7 @@ export async function POST(req) {
             "role": "user",
             "content": `Resume: ${resumeText}\n\nJob Description: ${jobDescription}\n\nReturn format: [{"question": "...", "bestAnswer": "..."}]`
           }
-        ],
-        "temperature": 0.7,
-        "max_tokens": 4000 // વધારે પ્રશ્નો માટે ટોકન્સ વધાર્યા છે
-      })
-    });
-
-    const data = await response.json();
-    
-    if (!data.choices || data.choices.length === 0) {
-      throw new Error("No response from AI provider");
-    }
-
-    const content = data.choices[0].message.content;
+        ]);
     // Clean JSON string from potential markdown backticks
     const cleanContent = content.replace(/```json|```/g, "").trim();
     const questions = JSON.parse(cleanContent);

@@ -36,12 +36,12 @@ export default function JobsPage() {
       try {
         const res = await fetch("/api/jobs");
         const data = await res.json();
-        const published = data.filter(j => j.published);
-        setCategories([...new Set(published.map(j => j.jobCategory))]);
+        const published = data.filter(j => j.published !== false);
+        setCategories([...new Set(published.map(j => j.jobCategory || j.category).filter(Boolean))]);
         
         let filtered = published;
-        if (categoryFilter !== "All") filtered = filtered.filter(j => j.jobCategory === categoryFilter);
-        if (jobTypeFilter !== "All") filtered = filtered.filter(j => j.type === jobTypeFilter);
+        if (categoryFilter !== "All") filtered = filtered.filter(j => (j.jobCategory || j.category) === categoryFilter);
+        if (jobTypeFilter !== "All") filtered = filtered.filter(j => (j.jobType || j.type) === jobTypeFilter);
         if (experienceFilter !== "All") filtered = filtered.filter(j => j.experienceLevel === experienceFilter);
         
         setJobs(filtered);
@@ -104,11 +104,11 @@ export default function JobsPage() {
                     {selectedJob === job._id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-600" />}
                     <h3 className="font-bold text-slate-900 group-hover:text-indigo-600">{job.title}</h3>
                     <div className="mt-2 space-y-1">
-                      <p className="text-sm text-slate-500 flex items-center gap-1.5"><Building size={14}/> {job.company}</p>
+                      <p className="text-sm text-slate-500 flex items-center gap-1.5"><Building size={14}/> {job.companyName || job.company || "Verified Employer"}</p>
                       <p className="text-sm text-slate-500 flex items-center gap-1.5"><MapPin size={14}/> {job.location}</p>
                     </div>
                     <div className="mt-4 flex items-center gap-2">
-                      <span className="px-2 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold rounded uppercase">{job.type}</span>
+                      <span className="px-2 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold rounded uppercase">{job.jobType || job.type}</span>
                       <span className="text-indigo-600 text-[10px] font-bold uppercase">{job.experienceLevel}</span>
                     </div>
                   </div>
@@ -124,7 +124,7 @@ export default function JobsPage() {
                 <div className="flex justify-between items-start mb-8">
                   <div>
                     <h2 className="text-3xl font-black text-slate-900">{selectedJobData.title}</h2>
-                    <p className="text-lg text-indigo-600 font-bold mt-1">{selectedJobData.company}</p>
+                    <p className="text-lg text-indigo-600 font-bold mt-1">{selectedJobData.companyName || selectedJobData.company || "Verified Employer"}</p>
                   </div>
                   <div className="flex gap-3">
                     <button 
@@ -153,7 +153,7 @@ export default function JobsPage() {
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Type</span>
-                    <span className="font-bold text-slate-700">{selectedJobData.type}</span>
+                    <span className="font-bold text-slate-700">{selectedJobData.jobType || selectedJobData.type}</span>
                   </div>
                 </div>
 

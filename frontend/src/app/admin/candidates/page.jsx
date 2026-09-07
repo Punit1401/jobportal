@@ -263,6 +263,41 @@ import { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import { X } from "lucide-react"; // Close icon માટે
 
+// Formatting helpers to prevent literal "undefined" output for empty fields
+const getAddressStr = (c) => {
+  const parts = [];
+  if (c.city) parts.push(c.city);
+  if (c.state) parts.push(c.state);
+  let main = parts.join(", ");
+  if (c.pincode) {
+    main = main ? `${main} - ${c.pincode}` : c.pincode;
+  }
+  return main || null;
+};
+
+const getEduStr = (board, year, percentage) => {
+  const parts = [];
+  if (board) parts.push(board);
+  if (year) parts.push(`(${year})`);
+  let main = parts.join(" ");
+  if (percentage) {
+    main = main ? `${main} - ${percentage}%` : `${percentage}%`;
+  }
+  return main || null;
+};
+
+const getPostGradStr = (c) => {
+  if (!c.postGraduationUniversity && !c.postGraduationYear && !c.postGraduationPercentage) return null;
+  const parts = [];
+  if (c.postGraduationUniversity) parts.push(c.postGraduationUniversity);
+  if (c.postGraduationYear) parts.push(`(${c.postGraduationYear})`);
+  let main = parts.join(" ");
+  if (c.postGraduationPercentage) {
+    main = main ? `${main} - ${c.postGraduationPercentage}%` : `${c.postGraduationPercentage}%`;
+  }
+  return main || null;
+};
+
 export default function CandidatesAdmin() {
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -273,6 +308,7 @@ export default function CandidatesAdmin() {
   const [selectedCandidate, setSelectedCandidate] = useState(null);
 
   const [professionFilter, setProfessionFilter] = useState("All");
+  const [industryFilter, setIndustryFilter] = useState("All");
   const [positionFilter, setPositionFilter] = useState("All");
   const [roleFilter, setRoleFilter] = useState("All");
   const [experienceFilter, setExperienceFilter] = useState("All");
@@ -359,7 +395,8 @@ export default function CandidatesAdmin() {
       (positionFilter === "All" || c.position === positionFilter) &&
       (roleFilter === "All" || c.role === roleFilter) &&
       (experienceFilter === "All" || c.experience === experienceFilter) &&
-      (cityFilter === "All" || c.city === cityFilter)
+      (cityFilter === "All" || c.city === cityFilter) &&
+      (industryFilter === "All" || (c.jobIndustry || c.industry) === industryFilter)
     );
   }) : [];
 
@@ -373,8 +410,9 @@ export default function CandidatesAdmin() {
     <div className="p-6 relative">
       <h1 className="text-xl font-bold mb-4">All Candidates</h1>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
         <Filter label="Profession" value={professionFilter} setValue={setProfessionFilter} options={getUniqueValues("profession")} />
+        <Filter label="Industry" value={industryFilter} setValue={setIndustryFilter} options={["All", ...new Set(Array.isArray(candidates) ? candidates.map((c) => c.jobIndustry || c.industry).filter(Boolean) : [])]} />
         <Filter label="Position" value={positionFilter} setValue={setPositionFilter} options={getUniqueValues("position")} />
         <Filter label="Role" value={roleFilter} setValue={setRoleFilter} options={getUniqueValues("role")} />
         <Filter label="Experience" value={experienceFilter} setValue={setExperienceFilter} options={getUniqueValues("experience")} />
@@ -448,8 +486,10 @@ export default function CandidatesAdmin() {
                 <Data label="Mobile" value={selectedCandidate.mobile} />
                 <Data label="DOB" value={selectedCandidate.dob} />
                 <Data label="Gender" value={selectedCandidate.gender} />
+                <Data label="Religion" value={selectedCandidate.religion} />
+                <Data label="Reference" value={selectedCandidate.reference || selectedCandidate.Reference} />
                 <Data label="Address" value={selectedCandidate.address} />
-                <Data label="City/State/Pincode" value={`${selectedCandidate.city}, ${selectedCandidate.state} - ${selectedCandidate.pincode}`} />
+                <Data label="City/State/Pincode" value={getAddressStr(selectedCandidate)} />
               </Section>
 
               <Section title="Professional Details">
@@ -459,17 +499,26 @@ export default function CandidatesAdmin() {
                 <Data label="Experience Status" value={selectedCandidate.presentEmploymentStatus} />
                 <Data label="Company Name" value={selectedCandidate.currentCompanyName || selectedCandidate.companyName} />
                 <Data label="Department" value={selectedCandidate.jobDepartment} />
-                <Data label="Industry" value={selectedCandidate.jobIndustry} />
+                <Data label="Industry" value={selectedCandidate.jobIndustry || selectedCandidate.industry} />
                 <Data label="Last Salary" value={selectedCandidate.lastSalary} />
                 <Data label="Expected Salary" value={selectedCandidate.expectedSalary} />
                 <Data label="Notice Period" value={selectedCandidate.noticePeriod} />
               </Section>
 
               <Section title="Education">
-                <Data label="10th" value={`${selectedCandidate.classXBoard} (${selectedCandidate.classXYear}) - ${selectedCandidate.classXPercentage}%`} />
-                <Data label="12th" value={`${selectedCandidate.classXIIBoard} (${selectedCandidate.classXIIYear}) - ${selectedCandidate.classXIIPercentage}%`} />
-                <Data label="Graduation" value={`${selectedCandidate.graduationUniversity} (${selectedCandidate.graduationYear}) - ${selectedCandidate.graduationPercentage}%`} />
-                <Data label="Post Grad" value={selectedCandidate.postGraduationUniversity ? `${selectedCandidate.postGraduationUniversity} (${selectedCandidate.postGraduationYear})` : "N/A"} />
+                <Data label="10th" value={getEduStr(selectedCandidate.classXBoard, selectedCandidate.classXYear, selectedCandidate.classXPercentage)} />
+                <Data label="12th" value={getEduStr(selectedCandidate.classXIIBoard, selectedCandidate.classXIIYear, selectedCandidate.classXIIPercentage)} />
+                <Data label="Graduation" value={getEduStr(selectedCandidate.graduationUniversity, selectedCandidate.graduationYear, selectedCandidate.graduationPercentage)} />
+                <Data label="Post Grad" value={getPostGradStr(selectedCandidate)} />
+                {selectedCandidate.itiUniversity && (
+                  <Data label="ITI" value={getEduStr(selectedCandidate.itiUniversity, selectedCandidate.itiYear, selectedCandidate.itiPercentage)} />
+                )}
+                {selectedCandidate.diplomaUniversity && (
+                  <Data label="Diploma" value={getEduStr(selectedCandidate.diplomaUniversity, selectedCandidate.diplomaYear, selectedCandidate.diplomaPercentage)} />
+                )}
+                {selectedCandidate.pgDiplomaUniversity && (
+                  <Data label="PG Diploma" value={getEduStr(selectedCandidate.pgDiplomaUniversity, selectedCandidate.pgDiplomaYear, selectedCandidate.pgDiplomaPercentage)} />
+                )}
               </Section>
 
               <Section title="Skills & Links">

@@ -145,6 +145,10 @@ const ServiceProviderSchema = new mongoose.Schema(
       type: String,
       default: "" 
     },
+    logo: {
+      type: String,
+      default: ""
+    },
 
     // --- KYC & Verification Details ---
     gstNumber: { type: String, trim: true },
@@ -198,10 +202,15 @@ const ServiceProviderSchema = new mongoose.Schema(
       storageUsed: { type: Number, default: 0 }, // In MB
       storageLimit: { type: Number, default: 100 } // In MB (Default 100MB)
     },
+    purchasedStorageMB: { type: Number, default: 0 }, // Lifetime purchased storage
   },
   { timestamps: true }
 );
 
-const ServiceProvider = mongoose.models.ServiceProvider || mongoose.model("ServiceProvider", ServiceProviderSchema);
+if (mongoose.models.ServiceProvider) {
+  delete mongoose.models.ServiceProvider;
+}
+
+const ServiceProvider = mongoose.model("ServiceProvider", ServiceProviderSchema);
 
 export default ServiceProvider;

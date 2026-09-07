@@ -23,8 +23,23 @@ const PortfolioSchema = new mongoose.Schema(
     },
     template: {
       type: String,
-      enum: ["modern", "minimal", "creative"],
+      enum: [
+        "modern",
+        "minimal",
+        "creative",
+        "seo-pro",
+        "business-pro",
+        "studio-pro",
+        "architecture-pro",
+        "interior-pro",
+        "developer-pro",
+        "it-engineer-pro",
+      ],
       default: "modern",
+    },
+    siteOverrides: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
     isPublished: {
       type: Boolean,

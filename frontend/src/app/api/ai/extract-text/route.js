@@ -18,7 +18,7 @@
 //     let extractedText = "";
 //     const fileName = file.name.toLowerCase();
 
-//     // ૧. ટેક્સ્ટ એક્સટ્રેક્ટ કરવાનું લોજિક (PDF & DOCX Support)
+//     // 1. Text extraction logic (PDF & DOCX Support)
 //     try {
 //       if (fileName.endsWith(".pdf")) {
 //         const data = await pdf(buffer);
@@ -38,7 +38,7 @@
 //       return NextResponse.json({ success: false, error: "File is empty." }, { status: 400 });
 //     }
 
-//     // ૨. AI (OpenRouter) કોલ કરો
+//     // 2. Call AI (OpenRouter)
 //     const prompt = `Extract ALL Job and Company details from the text below. 
 //     Return ONLY a valid JSON object. Do not include markdown, backticks, or any text before/after the JSON.
 
@@ -70,7 +70,7 @@
 //         "X-Title": "Job Portal",
 //       },
 //       body: JSON.stringify({
-//         "model": "google/gemini-2.0-flash-001",
+//         "model": "google/gemma-4-31b-it",
 //         "messages": [{ "role": "user", "content": prompt }],
 //         "temperature": 0.1,
 //         "response_format": { "type": "json_object" }
@@ -85,7 +85,7 @@
 //     // --- JSON Extraction Fix ---
 //     let parsedData = {};
 //     try {
-//       // JSON ના ફોર્મેટને જ પકડવા માટે Regex
+//       // Regex to capture only the JSON format
 //       const startIdx = aiContent.indexOf('{');
 //       const endIdx = aiContent.lastIndexOf('}');
 
@@ -120,7 +120,7 @@ const pdf = require("pdf-parse-fork");
 
 export async function POST(req) {
   try {
-    // --- SAFETY CHECK: Content-Type ચેક ઉમેર્યો જેથી સર્વર ક્રેશ ના થાય ---
+    // --- SAFETY CHECK: Added Content-Type check so that server does not crash ---
     const contentType = req.headers.get("content-type") || "";
     if (!contentType.includes("multipart/form-data")) {
       return NextResponse.json({
@@ -140,7 +140,7 @@ export async function POST(req) {
     let extractedText = "";
     const fileName = file.name.toLowerCase();
 
-    // ૧. ટેક્સ્ટ એક્સટ્રેક્ટ કરવાનું લોજિક (PDF & DOCX Support)
+    // 1. Text extraction logic (PDF & DOCX Support)
     try {
       if (fileName.endsWith(".pdf")) {
         const data = await pdf(buffer);
@@ -160,7 +160,7 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: "File is empty." }, { status: 400 });
     }
 
-    // ૨. AI (OpenRouter) કોલ કરો
+    // 2. Call AI (OpenRouter)
     const prompt = `Extract ALL Job and Company details from the text below. 
     Return ONLY a valid JSON object. Do not include markdown, backticks, or any text before/after the JSON.
     
@@ -183,26 +183,8 @@ export async function POST(req) {
       }
     }`;
 
-    const aiRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost:3000",
-        "X-Title": "Job Portal",
-      },
-      body: JSON.stringify({
-        "model": "google/gemini-2.0-flash-001",
-        "messages": [{ "role": "user", "content": prompt }],
-        "temperature": 0.1,
-        "response_format": { "type": "json_object" }
-      })
-    });
-
-    const aiData = await aiRes.json();
-    if (!aiRes.ok) throw new Error(aiData.error?.message || "AI Analysis Failed");
-
-    let aiContent = aiData.choices[0].message.content.trim();
+    const { fetchWithFallback } = require('@/lib/ai-fallback');
+    let aiContent = await fetchWithFallback([{ "role": "user", "content": prompt }], 0.1);
 
     // --- JSON Extraction Fix ---
     let parsedData = {};

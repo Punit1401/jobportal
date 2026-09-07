@@ -34,7 +34,8 @@ export async function POST(req) {
     const isScheduled = !!scheduledTime;
     
     const campaign = await ScheduledMail.create({
-      recruiterId: recruiter._id,
+      ownerId: recruiter._id,
+      ownerRole: "recruiter",
       subject,
       message,
       sentEmails: emails,

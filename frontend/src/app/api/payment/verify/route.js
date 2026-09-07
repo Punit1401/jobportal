@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import connectDB from "@/lib/mongodb";
+import connectMongo from "@/lib/mongodb";
 import Recruiter from "@/models/Recruiter";
 import ServiceProvider from "@/models/serviceprovider";
 import Plan from "@/models/Plan"; // ૧. Plan મોડેલ ઈમ્પોર્ટ કરો
@@ -22,7 +22,7 @@ export async function POST(req) {
       .digest("hex");
 
     if (expectedSignature === razorpay_signature) {
-      await connectDB();
+      await connectMongo();
 
       // ૨. પ્લાનની વિગતો મેળવો (કેટલા દિવસની વેલિડિટી છે તે જાણવા માટે)
       const selectedPlan = await Plan.findById(planId);

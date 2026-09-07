@@ -1,7 +1,8 @@
 "use client";
 import React, { useState } from "react";
-import { ShieldAlert, ShieldCheck, AlertTriangle, Search, Loader2, ArrowRight, Building, FileText, Mail, DollarSign } from "lucide-react";
+import { ShieldAlert, ShieldCheck, AlertTriangle, Search, Loader2, ArrowRight, Building, FileText, Mail, DollarSign, Info } from "lucide-react";
 import UserSidebar from '@/components/UserSidebar';
+import FeatureGuard from "@/components/FeatureGuard";
 
 export default function FakeJobCheckPage() {
     const [jobData, setJobData] = useState({
@@ -56,7 +57,8 @@ export default function FakeJobCheckPage() {
             <UserSidebar onCollapseChange={setIsSidebarCollapsed} />
 
             <main className={`flex-1 overflow-y-auto transition-all duration-300 pt-20 lg:pt-8 ${isSidebarCollapsed ? "lg:ml-24" : "lg:ml-72"}`}>
-                <div className="p-4 sm:p-6 md:p-8 lg:px-12 max-w-5xl mx-auto space-y-8">
+                <FeatureGuard featureName="Interview Preparation">
+                    <div className="p-4 sm:p-6 md:p-8 lg:px-12 max-w-5xl mx-auto space-y-8">
                     
                     {/* Header */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-4">
@@ -204,10 +206,21 @@ export default function FakeJobCheckPage() {
                                         </p>
                                     </div>
 
-                                    <div className="p-6 flex-1 bg-slate-50">
+                                    <div className="p-6 flex-1 bg-slate-50 space-y-6 overflow-y-auto max-h-[500px]">
+                                        {result.explanation && (
+                                            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                                                <h4 className="font-black text-slate-900 uppercase tracking-widest text-[10px] mb-3 flex items-center gap-2 text-indigo-600">
+                                                    <Info size={14} /> AI Detailed Analysis & Explanation
+                                                </h4>
+                                                <p className="text-slate-600 text-sm font-medium leading-relaxed whitespace-pre-line">
+                                                    {result.explanation}
+                                                </p>
+                                            </div>
+                                        )}
+
                                         {result.redFlags && result.redFlags.length > 0 ? (
-                                            <>
-                                                <h4 className="font-black text-slate-900 uppercase tracking-widest text-xs mb-4 flex items-center gap-2">
+                                            <div>
+                                                <h4 className="font-black text-slate-900 uppercase tracking-widest text-[10px] mb-4 flex items-center gap-2 text-slate-500">
                                                     <AlertTriangle size={14} className="text-rose-500" /> Detected Red Flags
                                                 </h4>
                                                 <ul className="space-y-3">
@@ -218,9 +231,9 @@ export default function FakeJobCheckPage() {
                                                         </li>
                                                     ))}
                                                 </ul>
-                                            </>
+                                            </div>
                                         ) : (
-                                            <div className="text-center py-10">
+                                            <div className="text-center py-10 bg-white rounded-2xl border border-slate-100">
                                                 <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                                     <ShieldCheck className="text-emerald-500" size={28} />
                                                 </div>
@@ -245,6 +258,7 @@ export default function FakeJobCheckPage() {
                     </div>
 
                 </div>
+                </FeatureGuard>
             </main>
         </div>
     );

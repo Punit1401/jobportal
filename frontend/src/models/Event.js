@@ -2,17 +2,32 @@ import mongoose from "mongoose";
 
 const EventSchema = new mongoose.Schema(
   {
-    recruiterId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
     title: { type: String, required: true },
-    type: { type: String, default: "Interview" }, // Interview, Meeting, Webinar
+    category: { 
+      type: String, 
+      enum: ["Job Fair", "Webinar", "Seminar", "Workshop", "Training", "Other"],
+      default: "Other" 
+    },
     date: { type: Date, required: true },
-    location: String,
-    attendees: [String],
-    description: String,
+    time: { type: String },
+    location: { type: String }, // Physical address or "Online"
+    meetingLink: { type: String }, // For webinars/online events
+    description: { type: String },
+    thumbnail: { type: String }, // Image URL
+    status: { 
+      type: String, 
+      enum: ["Upcoming", "Ongoing", "Completed", "Cancelled"],
+      default: "Upcoming" 
+    },
+    targetAudience: [{ 
+      type: String, 
+      enum: ["Candidate", "Recruiter", "ServiceProvider", "All"],
+      default: ["All"]
+    }],
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin", // Or Staff
+    }
   },
   { timestamps: true }
 );

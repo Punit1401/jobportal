@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import UserSidebar from "@/components/UserSidebar";
 import {
   User, Mail, Phone, Briefcase, MapPin,
-  Link as LinkIcon, FileText, Save, Loader2, GraduationCap, Globe, BookOpen, Star, Trash2, Plus, Eye, Edit3, ExternalLink, Calendar, Award
+  Link as LinkIcon, FileText, Save, Loader2, GraduationCap, Globe, BookOpen, Star, Trash2, Plus, Eye, Edit3, ExternalLink, Calendar, Award, Sliders
 } from 'lucide-react';
 import { AlertCircle, Info } from "lucide-react";
 
@@ -114,7 +114,7 @@ export default function ProfilePage() {
   const years = Array.from({ length: 40 }, (_, i) => (new Date().getFullYear() - i).toString());
 
   const emptyWorkExperience = {
-    currentCompanyName: "", jobDepartment: "", jobIndustry: "",
+    currentCompanyName: "", designation: "", jobDepartment: "", jobIndustry: "",
     jobFromDate: "", jobToDate: "", jobDescription: "",
     presentEmploymentStatus: "", lastSalary: "", expectedSalary: "", noticePeriod: ""
   };
@@ -131,7 +131,7 @@ export default function ProfilePage() {
 
   const [formData, setFormData] = useState({
     fullName: "", email: "", mobile: "", dob: "",
-    profession: "", position: "", role: "",
+    religion: "", motherTongue: "", profession: "", position: "", role: "",
     pincode: "", state: "", city: "", address: "",
     reference: "",
     skills: "",
@@ -140,6 +140,10 @@ export default function ProfilePage() {
     classXYear: "", classXBoard: "", classXSchool: "", classXPercentage: "",
     classXIIYear: "", classXIIBoard: "", classXIILevel: "", classXIISchool: "", classXIIPercentage: "",
     awards: [{ recognition: "", year: "", field: "", affiliation: "", level: "" }],
+    presentEmploymentStatus: "",
+    preferredJobTypes: [],
+    placementLocation: "",
+    placementPincode: "",
   });
 
   const [workExperiences, setWorkExperiences] = useState([{ ...emptyWorkExperience }]);
@@ -187,6 +191,7 @@ export default function ProfilePage() {
             } else if (data.currentCompanyName || data.jobDepartment || data.presentEmploymentStatus) {
               setWorkExperiences([{
                 currentCompanyName: data.currentCompanyName || "",
+                designation: data.designation || "",
                 jobDepartment: data.jobDepartment || "",
                 jobIndustry: data.jobIndustry || "",
                 jobFromDate: data.jobFromDate || "",
@@ -250,6 +255,7 @@ export default function ProfilePage() {
             setFormData(prev => ({
               ...prev,
               ...data,
+              reference: data.reference || data.Reference || "",
               fullName: prev.fullName || data.fullName || session?.user?.name || "",
               email: session?.user?.email
             }));
@@ -358,12 +364,16 @@ export default function ProfilePage() {
     setSaving(true);
     try {
       const data = new FormData();
+      const excludeKeys = ['workExperiences', 'formalEducations', 'nonFormalEducations', 'resume', 'coverLetter', 'experienceLetter', '_id', 'userId', 'createdAt', 'updatedAt', '__v'];
       Object.keys(formData).forEach(key => {
+        if (excludeKeys.includes(key)) return;
         if (key === 'skills') {
           const skillsArray = typeof formData.skills === 'string' ? formData.skills.split(',').map(s => s.trim()).filter(s => s !== "") : formData.skills;
           data.append(key, JSON.stringify(skillsArray));
         } else if (key === 'awards') {
           data.append(key, JSON.stringify(formData[key]));
+        } else if (key === 'preferredJobTypes') {
+          data.append(key, JSON.stringify(formData.preferredJobTypes || []));
         } else {
           data.append(key, formData[key] || "");
         }
@@ -377,9 +387,23 @@ export default function ProfilePage() {
 
       const res = await fetch("/api/candidates", { method: "POST", body: data });
       if (res.ok) {
+        const savedData = await res.json();
+        if (savedData) {
+          if (Array.isArray(savedData.skills)) {
+            savedData.skills = savedData.skills.join(", ");
+          }
+          setFormData(prev => ({ ...prev, ...savedData }));
+          if (savedData.workExperiences) setWorkExperiences(savedData.workExperiences);
+          if (savedData.formalEducations) setFormalEducations(savedData.formalEducations);
+          if (savedData.nonFormalEducations) setNonFormalEducations(savedData.nonFormalEducations);
+        }
+        setFiles({ resume: null, coverLetter: null, experienceLetter: null });
         alert(isExistingUser ? "Profile updated successfully!" : "Profile created successfully!");
         setIsExistingUser(true);
         setIsPreview(true);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.message || "Error saving profile");
       }
     } catch (err) { alert("Error saving profile"); } finally { setSaving(false); }
   };
@@ -442,6 +466,8 @@ export default function ProfilePage() {
                     <PreviewItem label="Mobile Number" value={formData.mobile} icon={Phone} />
                     <PreviewItem label="Date of Birth" value={formData.dob} icon={Calendar} />
                     <PreviewItem label="Gender" value={formData.gender} />
+                    <PreviewItem label="Religion" value={formData.religion} />
+                    <PreviewItem label="Mother Tongue" value={formData.motherTongue} />
                     <PreviewItem label="Profession" value={formData.profession} />
                     <PreviewItem label="Desired Position" value={formData.position} />
                     <PreviewItem label="Reference" value={formData.reference} />
@@ -472,11 +498,15 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <InputField label="Date of Birth" name="dob" type="date" value={formData.dob} onChange={handleInputChange} />
                     <SelectField label="Gender" name="gender" options={["Male", "Female", "Other"]} value={formData.gender} onChange={handleInputChange} />
-                    <SelectField label="Desired Position" name="position" options={dropdownOptions.position} value={formData.position} onChange={handleInputChange} />
+                    <SelectField label="Religion" name="religion" options={["Hindu", "Muslim", "Christian", "Sikh", "Jain", "Buddhist", "Other"]} value={formData.religion} onChange={handleInputChange} />
                   </div>
                   {/* Row 3: Reference, Industry, Profession — all in one line */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <InputField label="Mother Tongue" name="motherTongue" value={formData.motherTongue} onChange={handleInputChange} />
+                    <SelectField label="Desired Position" name="position" options={dropdownOptions.position} value={formData.position} onChange={handleInputChange} />
                     <SelectField label="Reference" name="reference" options={dropdownOptions.reference} value={formData.reference} onChange={handleInputChange} />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <SelectField label="Industry" name="jobIndustry" options={dropdownOptions.jobCategory} value={formData.jobIndustry} onChange={handleInputChange} />
                     <SelectField label="Profession" name="profession" options={dropdownOptions.profession} value={formData.profession} onChange={handleInputChange} />
                   </div>
@@ -667,7 +697,155 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* 4. WORK EXPERIENCE */}
+            {/* 4. PROFILE & STATUS MANAGEMENT */}
+            <div className="bg-white rounded-[2rem] p-8 border border-slate-200 shadow-md">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="p-3 bg-[#EEF2F6] text-slate-700 rounded-xl"><Sliders size={22} /></div>
+                <h2 className="text-2xl font-extrabold text-slate-800">Profile & Status Management</h2>
+              </div>
+
+              {isPreview ? (
+                <div className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Employment Status</p>
+                      <span className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl font-bold text-sm border border-indigo-100">
+                        <User size={14} /> {formData.presentEmploymentStatus || "Not Specified"}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Preferred Job Types</p>
+                      <div className="flex flex-wrap gap-2">
+                        {formData.preferredJobTypes && formData.preferredJobTypes.length > 0 ? (
+                          formData.preferredJobTypes.map((type, idx) => (
+                            <span key={idx} className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg font-bold text-xs border border-slate-200">
+                              {type}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-slate-500 font-bold text-sm">No preferences selected</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="border-t border-slate-100 pt-6">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3">Preferred Placement Area</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Preferred Location</p>
+                        <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                          <MapPin size={14} className="text-slate-400" /> {formData.placementLocation || "Not Specified"}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Preferred Pincode</p>
+                        <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                          <MapPin size={14} className="text-slate-400" /> {formData.placementPincode || "Not Specified"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Employment Status Selector */}
+                    <SelectField
+                      label="Employment Status"
+                      name="presentEmploymentStatus"
+                      options={Array.from(new Set([
+                        "Open for Change",
+                        "Bench",
+                        "No Job",
+                        "Employed",
+                        ...(dropdownOptions.experienceLevel || []).map(opt => typeof opt === 'string' ? opt : (opt.value || opt.label))
+                      ].filter(Boolean)))}
+                      value={formData.presentEmploymentStatus}
+                      onChange={handleInputChange}
+                    />
+
+                    {/* Preferred Job Types Radio Buttons */}
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-bold text-slate-600 ml-1">Preferred Job Types</label>
+                      <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 border-2 border-slate-100 rounded-xl">
+                        {[
+                          "Full-time",
+                          "Part-time",
+                          "Freelance",
+                          "Remote",
+                          "Project Based",
+                          "Offline / On-site",
+                          "Hourly Basis"
+                        ].map((type) => {
+                          const isChecked = Array.isArray(formData.preferredJobTypes) && formData.preferredJobTypes.includes(type);
+                          return (
+                            <label key={type} className="flex items-center gap-3 cursor-pointer select-none">
+                              <input
+                                type="radio"
+                                name="preferredJobType"
+                                value={type}
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  setFormData(prev => ({ ...prev, preferredJobTypes: [type] }));
+                                }}
+                                className="w-5 h-5 rounded-full border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                              />
+                              <span className="text-sm font-bold text-slate-700">{type}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Placement Area */}
+                  <div className="border-t border-slate-100 pt-6">
+                    <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                      <MapPin size={18} className="text-indigo-600" /> Placement Area (Preferred Job Location)
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <InputField
+                        label="Preferred Location"
+                        name="placementLocation"
+                        placeholder="e.g. Ahmedabad, Mumbai"
+                        value={formData.placementLocation}
+                        onChange={handleInputChange}
+                      />
+                      <InputField
+                        label="Preferred Pincode"
+                        name="placementPincode"
+                        placeholder="e.g. 380001"
+                        value={formData.placementPincode}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Urgent Broadcast Box if status is "No Job" */}
+                  {formData.presentEmploymentStatus === "No Job" && (
+                    <div className="p-6 bg-amber-50 border-2 border-amber-200 rounded-[2rem] shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                      <h4 className="text-amber-800 font-black text-base uppercase tracking-wider flex items-center gap-2 mb-3">
+                        <AlertCircle size={20} className="text-amber-600" /> Urgent: Broadcast My Status
+                      </h4>
+                      <div className="text-amber-700 text-sm space-y-3 font-bold leading-relaxed">
+                        <p className="bg-white/80 p-4 rounded-2xl border border-amber-100 text-slate-800">
+                          <span className="text-rose-600 font-black">Important Notice:</span> By selecting <span className="underline">"No Job"</span>, the system will broadcast an automated notification to all <b>Candidates</b> and <b>Recruiters</b> stating that you are looking for immediate employment.
+                        </p>
+                        <div className="flex items-start gap-3 p-2">
+                          <Info size={16} className="shrink-0 mt-1" />
+                          <p>Please use this feature responsibly. It is designed to highlight your profile to potential employers when you are in urgent need.</p>
+                        </div>
+                        <p className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] inline-block uppercase tracking-widest">
+                          🔒 Usage Limit: This feature can only be triggered <b>once per year</b>.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 5. WORK EXPERIENCE */}
             <div className="bg-white rounded-[2rem] p-8 border border-slate-200 shadow-md">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div className="flex items-center gap-4">
@@ -686,10 +864,10 @@ export default function ProfilePage() {
                   isPreview ? (
                     <div key={index} className="border-l-4 border-emerald-500 pl-6 space-y-2">
                       <h3 className="text-2xl font-black text-slate-800">{work.currentCompanyName || "Company Name Not Set"}</h3>
+                      <p className="text-emerald-700 font-bold text-base">{work.designation || "Designation not set"}</p>
                       <p className="text-indigo-600 font-bold text-lg">{work.jobDepartment} • {work.jobIndustry}</p>
                       <div className="flex flex-wrap gap-4 text-sm font-bold text-slate-500">
                         <span className="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full"><Calendar size={14} /> {work.jobFromDate} to {work.jobToDate || "Present"}</span>
-                        <span className="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full"><User size={14} /> {work.presentEmploymentStatus}</span>
                       </div>
                       <div className="mt-4">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Role Description</p>
@@ -710,39 +888,11 @@ export default function ProfilePage() {
                       )}
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <InputField label="Current/Last Company" name="currentCompanyName" value={work.currentCompanyName} onChange={(e) => handleWorkChange(index, e)} />
+                        <InputField label="Designation / Position Held" name="designation" value={work.designation} onChange={(e) => handleWorkChange(index, e)} />
                         <SelectField label="Department" name="jobDepartment" options={dropdownOptions.jobDepartment} value={work.jobDepartment} onChange={(e) => handleWorkChange(index, e)} />
                         <SelectField label="Industry" name="jobIndustry" options={dropdownOptions.jobCategory} value={work.jobIndustry} onChange={(e) => handleWorkChange(index, e)} />
                         <InputField label="From Date" name="jobFromDate" type="date" value={work.jobFromDate} onChange={(e) => handleWorkChange(index, e)} />
                         <InputField label="To Date" name="jobToDate" type="date" value={work.jobToDate} onChange={(e) => handleWorkChange(index, e)} />
-                        {/* --- Employment Status Select Field --- */}
-                        <SelectField
-                          label="Employment Status"
-                          name="presentEmploymentStatus"
-                          options={dropdownOptions.experienceLevel}
-                          value={work.presentEmploymentStatus}
-                          onChange={(e) => handleWorkChange(index, e)}
-                        />
-
-                        {/* --- અંહીં નીચે કોડ ઉમેરો --- */}
-                        {work.presentEmploymentStatus === "No Job" && (
-                          <div className="md:col-span-3 mt-4 p-6 bg-amber-50 border-2 border-amber-200 rounded-[2rem] shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
-                            <h4 className="text-amber-800 font-black text-base uppercase tracking-wider flex items-center gap-2 mb-3">
-                              <AlertCircle size={20} className="text-amber-600" /> Urgent: Broadcast My Status
-                            </h4>
-                            <div className="text-amber-700 text-sm space-y-3 font-bold leading-relaxed">
-                              <p className="bg-white/80 p-4 rounded-2xl border border-amber-100 text-slate-800">
-                                <span className="text-rose-600 font-black">Important Notice:</span> By selecting <span className="underline">"No Job"</span>, the system will broadcast an automated notification to all <b>Candidates</b> and <b>Recruiters</b> stating that you are looking for immediate employment.
-                              </p>
-                              <div className="flex items-start gap-3 p-2">
-                                <Info size={16} className="shrink-0 mt-1" />
-                                <p>Please use this feature responsibly. It is designed to highlight your profile to potential employers when you are in urgent need.</p>
-                              </div>
-                              <p className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] inline-block uppercase tracking-widest">
-                                🔒 Usage Limit: This feature can only be triggered <b>once per year</b>.
-                              </p>
-                            </div>
-                          </div>
-                        )}
                         <InputField label="Current CTC" name="lastSalary" value={work.lastSalary} onChange={(e) => handleWorkChange(index, e)} />
                         <InputField label="Expected CTC" name="expectedSalary" value={work.expectedSalary} onChange={(e) => handleWorkChange(index, e)} />
                         <SelectField label="Notice Period" name="noticePeriod" options={["Immediate", "15 Days", "30 Days", "45 Days", "60 Days", "90 Days"]} value={work.noticePeriod} onChange={(e) => handleWorkChange(index, e)} />
@@ -756,7 +906,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* 5. AWARDS & RECOGNITION */}
+            {/* 6. AWARDS & RECOGNITION */}
             <div className="bg-white rounded-[2rem] p-8 border border-slate-200 shadow-md">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div className="flex items-center gap-4">
@@ -798,7 +948,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* 6. SKILLS & SOCIALS */}
+            {/* 7. SKILLS & SOCIALS */}
             <div className="bg-white rounded-[2rem] p-8 border border-slate-200 shadow-md">
               <div className="flex items-center gap-4 mb-8">
                 <div className="p-3 bg-purple-50 text-purple-600 rounded-xl"><Globe size={22} /></div>
@@ -847,25 +997,59 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* 7. DOCUMENTS */}
-            {!isPreview && (
-              <div className="bg-white rounded-[2rem] p-8 border border-slate-200 shadow-md">
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="p-3 bg-rose-50 text-rose-600 rounded-xl"><FileText size={22} /></div>
-                  <h2 className="text-2xl font-extrabold text-slate-800">Documents</h2>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  {['resume', 'coverLetter', 'experienceLetter'].map((fileKey) => (
-                    <div key={fileKey} className="group relative flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-200 rounded-3xl hover:border-indigo-400 hover:bg-indigo-50 transition-all cursor-pointer text-center">
-                      <FileText size={30} className="text-slate-400 mb-4 group-hover:text-indigo-600" />
-                      <p className="text-xs font-black text-slate-500 uppercase">{fileKey}</p>
-                      <p className="text-[10px] text-slate-400 mt-2">{files[fileKey] ? files[fileKey].name : "Upload File"}</p>
-                      <input type="file" name={fileKey} onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                    </div>
-                  ))}
-                </div>
+            {/* 8. DOCUMENTS */}
+            <div className="bg-white rounded-[2rem] p-8 border border-slate-200 shadow-md">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="p-3 bg-rose-50 text-rose-600 rounded-xl"><FileText size={22} /></div>
+                <h2 className="text-2xl font-extrabold text-slate-800">Documents</h2>
               </div>
-            )}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {['resume', 'coverLetter', 'experienceLetter'].map((fileKey) => {
+                  const existingUrl = formData[fileKey];
+                  const selectedFile = files[fileKey];
+                  const displayName = selectedFile
+                    ? selectedFile.name
+                    : (existingUrl ? existingUrl.split('/').pop().replace(/^\d+-/, '') : "No file uploaded");
+                  const hasFile = selectedFile || existingUrl;
+
+                  return (
+                    <div key={fileKey} className="group relative flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 rounded-3xl hover:border-indigo-400 hover:bg-indigo-50/50 transition-all text-center min-h-[160px]">
+                      <FileText size={30} className={`mb-3 ${hasFile ? 'text-indigo-600' : 'text-slate-400'}`} />
+                      <p className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1">
+                        {fileKey.replace(/([A-Z])/g, ' $1')}
+                      </p>
+                      <p className="text-[11px] font-bold text-slate-700 truncate max-w-[180px] mb-4" title={displayName}>
+                        {displayName}
+                      </p>
+                      
+                      <div className="flex gap-2 z-20">
+                        {existingUrl && (
+                          <a
+                            href={existingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-all animate-in fade-in duration-200"
+                          >
+                            <Eye size={12} /> View
+                          </a>
+                        )}
+                        {!isPreview && (
+                          <label className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition-all cursor-pointer">
+                            <Plus size={12} /> {existingUrl ? "Change" : "Upload"}
+                            <input 
+                              type="file" 
+                              name={fileKey} 
+                              onChange={handleFileChange} 
+                              className="hidden" 
+                            />
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
           </form>
         </div>

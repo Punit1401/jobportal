@@ -19,13 +19,13 @@ export async function GET(req) {
       return NextResponse.json({ success: true, sessions: [], history: [] });
     }
 
-    // જો chatId માંગી હોય, તો તે સેશનની મેસેજ હિસ્ટ્રી આપો
+    // If chatId is provided, give the message history of that session
     if (chatId) {
       const currentChat = candidate.aiChats.find((c) => c._id.toString() === chatId);
       return NextResponse.json({ success: true, history: currentChat?.messages || [] });
     }
 
-    // સાઇડબાર માટે બધી ચેટ્સનું લિસ્ટ
+    // List of all chats for the sidebar
     const sessions = candidate.aiChats.map((c) => ({
       id: c._id,
       title: c.title,
@@ -50,17 +50,9 @@ export async function POST(req) {
       return NextResponse.json({ success: true });
     }
 
-    const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        "model": "google/gemini-2.0-flash-001",
-        "messages": [
+    
+    const { fetchWithFallback } = require('@/lib/ai-fallback');
+    const reply = await fetchWithFallback([
           {
             "role": "system",
             "content": `You are a professional AI Career Tutor. 
@@ -73,21 +65,14 @@ export async function POST(req) {
           },
           ...history,
           { "role": "user", "content": message }
-        ],
-      }),
-    });
-
-    const data = await response.json();
-    if (!data.choices) throw new Error("AI API Error");
-
-    const reply = data.choices[0].message.content;
+        ]);
     const userMsg = { role: "user", content: message };
     const aiMsg = { role: "assistant", content: reply };
 
     let finalChatId = chatId;
 
     if (!chatId) {
-      // ૧. નવી ચેટ માટે
+      // 1. For new chat
       const newChat = {
         title: message.length > 30 ? message.substring(0, 30) + "..." : message,
         messages: [userMsg, aiMsg],
@@ -97,14 +82,14 @@ export async function POST(req) {
       const updatedCandidate = await Candidate.findOneAndUpdate(
         { userId: session.user.id },
         { $push: { aiChats: newChat } },
-        { new: true, upsert: true } // upsert: true ઉમેર્યું જેથી નવો રેકોર્ડ બની જાય
+        { new: true, upsert: true } // added upsert: true so a new record is created
       );
 
       if (updatedCandidate && updatedCandidate.aiChats) {
         finalChatId = updatedCandidate.aiChats[updatedCandidate.aiChats.length - 1]._id;
       }
     } else {
-      // ૨. જૂની ચેટ અપડેટ કરવા માટે
+      // 2. To update old chat
       await Candidate.updateOne(
         { userId: session.user.id, "aiChats._id": chatId },
         {

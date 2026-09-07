@@ -3,17 +3,10 @@ import { NextResponse } from "next/server";
 export async function POST(req) {
   try {
     const { industry } = await req.json();
-    const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+    
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        "model": "google/gemini-2.0-flash-001",
-        "messages": [
+    const { fetchWithFallback } = require('@/lib/ai-fallback');
+    const result = await fetchWithFallback([
           {
             "role": "system",
             "content": `You are a real-time Global Market Data Analyst. 
@@ -34,16 +27,7 @@ export async function POST(req) {
             "role": "user",
             "content": `Fetch and analyze the latest trends for ${industry}.`
           }
-        ],
-        "response_format": { "type": "json_object" },
-        "temperature": 1,
-      }),
-    });
-
-    const data = await response.json();
-    if (!data.choices || data.choices.length === 0) throw new Error("No response from AI");
-
-    const result = JSON.parse(data.choices[0].message.content);
+        ]);;
     return NextResponse.json({ success: true, trends: result.trends });
   } catch (error) {
     console.error("Trends API Error:", error);

@@ -17,14 +17,14 @@ export async function GET(req) {
     // Filter by ServiceProvider's email (as used in Inquiry and ServiceForm)
     const totalGigs = await ServiceForm.countDocuments({ providerEmail: session.user.email });
     const totalInquiries = await Inquiry.countDocuments({ providerEmail: session.user.email });
-    
+
     // Performance data (based on real inquiry counts by day of week)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    const inquiries = await Inquiry.find({ 
-        providerEmail: session.user.email,
-        createdAt: { $gte: sevenDaysAgo }
+
+    const inquiries = await Inquiry.find({
+      providerEmail: session.user.email,
+      createdAt: { $gte: sevenDaysAgo }
     });
 
     const performance = [
@@ -38,15 +38,15 @@ export async function GET(req) {
     ];
 
     inquiries.forEach(inq => {
-        const day = new Date(inq.createdAt).toLocaleDateString('en-US', { weekday: 'short' });
-        const pDay = performance.find(p => p.name === day);
-        if (pDay) pDay.count += 1;
+      const day = new Date(inq.createdAt).toLocaleDateString('en-US', { weekday: 'short' });
+      const pDay = performance.find(p => p.name === day);
+      if (pDay) pDay.count += 1;
     });
 
-    return NextResponse.json({ 
-      ok: true, 
+    return NextResponse.json({
+      ok: true,
       stats: { totalGigs, totalInquiries },
-      performance 
+      performance
     });
   } catch (err) {
     console.error(err);

@@ -222,6 +222,8 @@ const RecruiterSchema = new mongoose.Schema(
     ownerName: { type: String, default: "" },
     ownerNumber: { type: String, default: "" },
     ownerEmail: { type: String, default: "" },
+    ownerReligion: { type: String, default: "" },
+    ownerMotherTongue: { type: String, default: "" },
 
     // --- પેમેન્ટ અને એકાઉન્ટ એક્ટિવેશન ફિલ્ડ્સ (આ ઉમેરો) ---
     isPaid: { type: Boolean, default: false },        // પેમેન્ટ સ્ટેટસ
@@ -242,6 +244,7 @@ const RecruiterSchema = new mongoose.Schema(
       storageUsed: { type: Number, default: 0 }, // MB માં
       storageLimit: { type: Number, default: 100 } // MB માં (Default 100MB)
     },
+    purchasedStorageMB: { type: Number, default: 0 }, // Lifetime purchased storage
     isEmailVerified: { type: Boolean, default: false },
     isApproved: { type: Boolean, default: false },
     isRejected: { type: Boolean, default: false },
@@ -249,5 +252,9 @@ const RecruiterSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+if (mongoose.models.Recruiter) {
+  delete mongoose.models.Recruiter;
+}
 
 export default mongoose.models.Recruiter || mongoose.model("Recruiter", RecruiterSchema);

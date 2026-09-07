@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import connectMongo from "@/lib/mongodb";
 import Portfolio from "@/models/Portfolio";
 import Candidate from "@/models/Candidate";
+import { getMissingPortfolioProfileFields } from "@/lib/website/profileCompletion";
 
 export async function GET(req) {
   try {
@@ -35,9 +36,23 @@ export async function POST(req) {
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { username, theme, template, isPublished, visibleSections, accentColor } = body;
+    const { username, theme, template, isPublished, visibleSections, accentColor, siteOverrides } = body;
 
     await connectMongo();
+    const candidate = await Candidate.findOne({ userId: session.user.id }).lean();
+
+    if (isPublished) {
+      const missingFields = getMissingPortfolioProfileFields(candidate);
+      if (missingFields.length > 0) {
+        return NextResponse.json(
+          {
+            error: "Complete your profile before publishing",
+            missingFields,
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     // Check if username is taken by someone else
     if (username) {
@@ -49,7 +64,7 @@ export async function POST(req) {
 
     const updated = await Portfolio.findOneAndUpdate(
       { userId: session.user.id },
-      { $set: { username, theme, template, isPublished, visibleSections, accentColor } },
+      { $set: { username, theme, template, isPublished, visibleSections, accentColor, siteOverrides } },
       { new: true, upsert: true, runValidators: true }
     );
 

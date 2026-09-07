@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   MapPin, Coffee, Laptop, Heart,
   ArrowRight, Zap, Rocket, Loader2, Search, Briefcase, Clock, X, Building2, Globe, Users, Wallet, Filter, Calendar, BriefcaseBusiness, Tag, GraduationCap, UserCheck, ChevronLeft, ChevronRight, Sparkles,
-  ExternalLink, Mail, Phone, Code, UserCircle, Gavel, Banknote, Timer, Send, Bookmark, Star
+  ExternalLink, Mail, Phone, Code, UserCircle, Gavel, Banknote, Timer, Send, Bookmark, Star, Bell, FileText
 } from 'lucide-react';
 import ReviewSystem from "@/components/ReviewSystem";
 
@@ -40,7 +40,7 @@ const CareersContent = () => {
   const [loadingCompany, setLoadingCompany] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const jobsPerPage = 15;
+  const jobsPerPage = 10;
 
   const [savedJobIds, setSavedJobIds] = useState([]);
   const [savingJobId, setSavingJobId] = useState(null);
@@ -136,11 +136,19 @@ const CareersContent = () => {
     }
   };
 
+  const [bulkVacancies, setBulkVacancies] = useState([]);
+
   // ૨. બધી જોબ્સ (Default) Fetch કરવા માટે
   const fetchJobs = async () => {
     try {
       setLoading(true);
       setIsAiMode(false); // AI મોડ ઓફ કરો જેથી બધી જોબ્સ દેખાય
+
+      // Bulk Vacancies
+      fetch("/api/admin/bulk-vacancies")
+        .then(res => res.json())
+        .then(data => setBulkVacancies(Array.isArray(data) ? data.slice(0, 6) : []))
+        .catch(e => console.error(e));
 
       // Recruiter Jobs
       const res = await fetch('/api/jobs', { cache: 'no-store' });
@@ -161,15 +169,50 @@ const CareersContent = () => {
         }));
       } catch (e) { console.error(e); }
 
+      // Active advertisement campaigns → promoted job IDs (top of list)
+      let promotedJobs = [];
+      try {
+        const promoRes = await fetch("/api/advertising/promoted-jobs", { cache: "no-store" });
+        const promoData = await promoRes.json();
+        if (promoData.success && Array.isArray(promoData.jobs)) {
+          promotedJobs = promoData.jobs;
+        }
+      } catch (e) {
+        console.error("Promoted jobs fetch error:", e);
+      }
+
+      const promoOrder = new Map(promotedJobs.map((p) => [p.jobId, p.sortOrder]));
+
       // ભેગી કરેલી બધી જ જોબ્સ
       const combinedJobs = [...rawJobs, ...rawCandJobs];
-      const activeJobs = combinedJobs.filter(job => {
-        if (!job.deadline) return true;
-        const deadlineDate = new Date(job.deadline);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        return isNaN(deadlineDate.getTime()) ? true : deadlineDate >= today;
-      }).sort((a, b) => new Date(b.postedAt || b.createdAt || 0) - new Date(a.postedAt || a.createdAt || 0));
+      const activeJobs = combinedJobs
+        .filter((job) => {
+          if (!job.deadline) return true;
+          const deadlineDate = new Date(job.deadline);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return isNaN(deadlineDate.getTime()) ? true : deadlineDate >= today;
+        })
+        .map((job) => {
+          const id = String(job._id || job.id);
+          const promo = promotedJobs.find((p) => p.jobId === id);
+          if (promo) {
+            return {
+              ...job,
+              isPromoted: true,
+              promotedPlanTitle: promo.planTitle,
+            };
+          }
+          return job;
+        })
+        .sort((a, b) => {
+          const aId = String(a._id || a.id);
+          const bId = String(b._id || b.id);
+          const aRank = promoOrder.has(aId) ? promoOrder.get(aId) : Number.MAX_SAFE_INTEGER;
+          const bRank = promoOrder.has(bId) ? promoOrder.get(bId) : Number.MAX_SAFE_INTEGER;
+          if (aRank !== bRank) return aRank - bRank;
+          return new Date(b.postedAt || b.createdAt || 0) - new Date(a.postedAt || a.createdAt || 0);
+        });
 
       setJobs(activeJobs);
 
@@ -406,6 +449,63 @@ const CareersContent = () => {
             </div>
           </div>
         </div>
+
+        {/* --- Bulk Vacancies Spotlight --- */}
+        {bulkVacancies.length > 0 && !isAiMode && (
+          <div className="mb-20 space-y-8">
+            <div className="flex justify-between items-end">
+              <div>
+                <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                  <Bell className="text-indigo-600 animate-bounce" size={28} />
+                  Govt & Pvt Job <span className="text-indigo-600">Alerts</span>
+                </h2>
+                <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-2">Latest direct image notifications</p>
+              </div>
+              <button 
+                onClick={() => router.push("/careers/bulk-vacancies")}
+                className="group flex items-center gap-2 text-indigo-600 font-black text-xs uppercase tracking-widest hover:gap-4 transition-all"
+              >
+                View All Alerts <ArrowRight size={16} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {bulkVacancies.map((v) => {
+                const isPdf = v.fileType === "pdf" || (v.image && (v.image.startsWith("data:application/pdf") || v.image.includes("%PDF")));
+                return (
+                  <motion.div 
+                    key={v._id}
+                    whileHover={{ scale: 1.05, y: -5 }}
+                    onClick={() => router.push("/careers/bulk-vacancies")}
+                    className="relative aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer shadow-md hover:shadow-2xl transition-all border border-slate-100 bg-slate-900 flex items-center justify-center"
+                  >
+                    {isPdf ? (
+                      <div className="flex flex-col items-center justify-center p-2 text-center text-white">
+                        <FileText className="text-red-500 mb-1 animate-pulse" size={32} />
+                        <span className="text-[9px] font-black uppercase tracking-tighter line-clamp-2 px-1 text-slate-200">{v.title}</span>
+                      </div>
+                    ) : (
+                      <img src={v.image} alt={v.title} className="w-full h-full object-cover" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+                      <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-tighter ${
+                        v.type === "Govt" ? "bg-amber-400 text-white" : "bg-emerald-500 text-white"
+                      }`}>
+                        {v.type}
+                      </span>
+                      {isPdf && (
+                        <span className="px-1.5 py-0.5 rounded bg-red-600 text-white text-[7px] font-black uppercase">
+                          PDF
+                        </span>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="pb-24 px-6 bg-slate-50/50">
@@ -419,10 +519,15 @@ const CareersContent = () => {
                   <motion.div key={job._id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                     onClick={() => handleViewDetails(job)}
                   >
-                    <div className="group bg-white p-5 md:p-6 rounded-[2rem] border border-slate-100 hover:border-indigo-600 hover:shadow-lg transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden">
+                    <div className="group bg-white p-4 md:p-5 rounded-[2rem] border border-slate-100 hover:border-indigo-400 hover:shadow-xl transition-all cursor-pointer flex flex-col gap-3 relative overflow-hidden">
                       {isAiMode && job.matchScore && (
                         <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[9px] font-black px-4 py-1 rounded-bl-xl shadow-sm">
                           {job.matchScore}% MATCH
+                        </div>
+                      )}
+                      {job.isPromoted && !isAiMode && (
+                        <div className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-black px-4 py-1 rounded-bl-xl shadow-sm flex items-center gap-1 z-10">
+                          <Zap size={10} className="fill-white" /> SPONSORED
                         </div>
                       )}
                       {job.isFreelance && (
@@ -430,28 +535,104 @@ const CareersContent = () => {
                            <Gavel size={10} /> PROJECT
                          </div>
                       )}
-                      
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md ${job.isFreelance ? "bg-emerald-50 text-emerald-600" : "bg-indigo-50 text-indigo-600"}`}>
-                            {job.jobCategory || job.category || "General"}
-                          </span>
-                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest"><Clock size={10} className="inline mr-1" /> {job.jobType}</span>
-                        </div>
-                        <h3 className="text-xl font-black text-slate-900 group-hover:text-indigo-600 transition-colors leading-tight">{job.title}</h3>
-                        {job.isCandidate && job.companyName && (
-                          <p className="text-indigo-500 font-bold text-xs mt-0.5">{job.companyName}</p>
-                        )}
-                        <div className="flex flex-wrap items-center gap-4 text-slate-500 mt-2 text-[10px] font-bold uppercase">
-                          <span className="flex items-center gap-1"><MapPin size={14} className="text-indigo-500" /> {job.location}</span>
-                          <span className="flex items-center gap-1"><Briefcase size={14} className="text-indigo-500" /> {job.experienceLevel || "Any Exp"}</span>
-                          {job.isFreelance && job.projectBudget && (
-                            <span className="flex items-center gap-1 text-emerald-600"><Banknote size={14} /> {job.budgetType}: {job.projectBudget}</span>
+
+                      <div className="flex flex-col md:flex-row gap-4 md:items-start">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
+                          {job.logo ? (
+                            <img src={job.logo} alt={job.companyName || job.company || job.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-lg font-black text-slate-300">{(job.companyName || job.company || job.title || "J").charAt(0)}</span>
                           )}
                         </div>
+
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                            {job.isPromoted && !isAiMode && (
+                              <>
+                                <span className="px-2 py-0.5 text-[8px] font-black uppercase rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+                                  {job.promotedPlanTitle || "Featured"}
+                                </span>
+                                <span className="px-2 py-0.5 text-[8px] font-black uppercase rounded-md bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">
+                                  Urgent Hiring
+                                </span>
+                              </>
+                            )}
+                            <span className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-md ${job.isFreelance ? "bg-emerald-50 text-emerald-600" : "bg-indigo-50 text-indigo-600"}`}>
+                              {job.jobCategory || job.category || "General"}
+                            </span>
+                            {job.isFreelance ? (
+                              <span className="px-2 py-0.5 text-[8px] font-black uppercase rounded-md bg-slate-50 text-slate-500 border border-slate-200">
+                                Project
+                              </span>
+                            ) : (
+                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                                <Clock size={10} /> {job.jobType || "Full Time"}
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 className="text-xl font-black text-slate-900 group-hover:text-indigo-600 transition-colors leading-tight">
+                            {job.title}
+                          </h3>
+
+                          <p className="text-emerald-600 font-black text-sm mt-1">
+                            {job.salaryRange || job.projectBudget || "Best in Industry"}
+                            {!job.isFreelance && <span className="text-slate-400 font-semibold text-xs"> /Month</span>}
+                          </p>
+
+                          <div className="mt-2.5 space-y-1.5 text-slate-500">
+                            <p className="flex items-center gap-2 text-xs font-medium">
+                              <Briefcase size={14} className="text-slate-400" />
+                              {job.isCandidate ? (job.companyName || "Community Post") : (job.companyName || job.company || "Verified Employer")}
+                            </p>
+                            <p className="flex items-center gap-2 text-xs font-medium">
+                              <MapPin size={14} className="text-slate-400" />
+                              {job.location || "Location not specified"}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            <span className="px-2.5 py-1 rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600 text-[9px] font-black uppercase tracking-wider">
+                              {job.jobType || "Full Time"}
+                            </span>
+                            <span className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-slate-500 text-[9px] font-black uppercase tracking-wider">
+                              {job.experienceLevel || "Any Experience"}
+                            </span>
+                            {job.isFreelance && (
+                              <span className="px-2.5 py-1 rounded-lg border border-emerald-100 bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase tracking-wider">
+                                Freelance
+                              </span>
+                            )}
+                            {job.isCandidate && (
+                              <span className="px-2.5 py-1 rounded-lg border border-purple-100 bg-purple-50 text-purple-600 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
+                                <UserCheck size={10} /> Posted by Candidate
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="inline-flex items-center gap-2 bg-slate-950 text-white px-6 py-3 rounded-2xl font-black text-sm group-hover:bg-indigo-600 transition-all self-start md:self-center">
-                        {job.isFreelance ? "Bid Now" : "View Details"} <ArrowRight size={16} />
+
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={(e) => toggleSaveJob(e, job._id)}
+                          disabled={savingJobId === job._id}
+                          className={`p-3 rounded-2xl transition-all active:scale-95 border ${
+                            savedJobIds.includes(job._id) 
+                              ? 'bg-rose-50 text-rose-500 border-rose-100' 
+                              : 'bg-slate-50 text-slate-400 border-slate-100 hover:text-rose-500'
+                          }`}
+                        >
+                          {savingJobId === job._id ? <Loader2 size={18} className="animate-spin" /> : <Bookmark size={18} fill={savedJobIds.includes(job._id) ? "currentColor" : "none"} />}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/careers/${job._id}`);
+                          }}
+                          className="flex-1 inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-5 py-3 rounded-2xl font-black text-xs hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                        >
+                          View job details <ArrowRight size={16} />
+                        </button>
                       </div>
                     </div>
                   </motion.div>

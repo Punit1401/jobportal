@@ -123,8 +123,15 @@ export async function GET(req) {
     const email = searchParams.get("email");
 
     if (action === "get-profile") {
-      if (!email) return Response.json({ error: "Email required" }, { status: 400 });
-      const data = await Recruiter.findOne({ email: email.toLowerCase().trim() });
+      const id = searchParams.get("id");
+      let data;
+      if (id) {
+        data = await Recruiter.findById(id);
+      } else if (email) {
+        data = await Recruiter.findOne({ email: email.toLowerCase().trim() });
+      } else {
+        return Response.json({ error: "Email or ID required" }, { status: 400 });
+      }
       return Response.json({ data: data });
     }
     return Response.json({ error: "Invalid action" }, { status: 400 });

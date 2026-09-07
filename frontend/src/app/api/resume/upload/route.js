@@ -1,6 +1,8 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import connectMongo from "@/lib/mongodb";
 import Resume from "@/models/Resume";
 import mammoth from "mammoth";
@@ -95,10 +97,15 @@ function calculateATS(resumeText, jobDescription) {
 export async function POST(req) {
   try {
     await connectMongo();
+    const session = await getServerSession(authOptions);
 
     const form = await req.formData();
     const file = form.get("file");
-    const userId = form.get("userId") || null;
+    const userId =
+      form.get("userId") ||
+      session?.user?.email ||
+      session?.user?.id?.toString() ||
+      null;
     const jobDescription = form.get("jobDescription") || "";
 
     if (!file)
